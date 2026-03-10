@@ -1,0 +1,47 @@
+{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","level":"error","message":"Error setting up email transporter: getaddrinfo ENOTFOUND smtp.gmail.com","stack":"Error: getaddrinfo ENOTFOUND smtp.gmail.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)","syscall":"getaddrinfo"}
+{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","level":"error","message":"Error setting up email transporter: getaddrinfo ENOTFOUND smtp.gmail.com","stack":"Error: getaddrinfo ENOTFOUND smtp.gmail.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)","syscall":"getaddrinfo"}
+{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","level":"error","message":"Error setting up email transporter: getaddrinfo ENOTFOUND smtp.gmail.com","stack":"Error: getaddrinfo ENOTFOUND smtp.gmail.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)","syscall":"getaddrinfo"}
+{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","level":"error","message":"Error setting up email transporter: getaddrinfo ENOTFOUND smtp.gmail.com","stack":"Error: getaddrinfo ENOTFOUND smtp.gmail.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)","syscall":"getaddrinfo"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"error","message":"Signup error:"}
+{"level":"error","message":"Verify account error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"error","message":"Google authentication error:"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"error","message":"Google authentication error:"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}
+{"level":"info","message":"Email transporter is ready to send messages"}

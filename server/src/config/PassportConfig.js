@@ -29,7 +29,7 @@ passport.use(
           const newUser = await authRepository.createUser({
             name,
             email,
-            passwordHash: randomHash, // Can't be null - use placeholder
+            passwordHash: randomHash, // Placeholder
             role: "CASHIER",
             isActive: true,
             isVerified: true,

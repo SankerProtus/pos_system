@@ -1,0 +1,12 @@
+export { LoginPage } from "./LoginPage";
+export { RegisterForm as RegisterPage } from "./RegisterPage";
+export { VerifyEmailPage } from "./VerifyEmailPage";
+export { ForgotPasswordPage } from "./ForgotPasswordPage";
+export { ResendVerificationPage } from "./ResendVerificationPage";
+export { DashboardPage } from "./DashboardPage";
+// export { POSPage } from "./POSPage";
+// export { ProductsPage } from "./ProductsPage";
+// export { InventoryPage } from "./InventoryPage";
+// export { SalesPage } from "./SalesPage";
+// export { CustomersPage } from "./CustomersPage";
+// export { ReportsPage } from "./ReportsPage";

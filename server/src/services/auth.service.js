@@ -2,7 +2,6 @@ import bcrypt from "bcrypt";
 import { authRepository } from "../repositories/auth.repository.js";
 import { generateToken } from "../config/jwt.js";
 import { emailService } from "../email/services/email.service.js";
-import { logger } from "../utils/logger.js";
 
 const SALT_ROUNDS = 12;
 const VERIFICATION_CODE_EXPIRY = 15 * 60 * 1000; // 15 minutes
@@ -154,6 +153,7 @@ export const authService = {
 
     // Send welcome email
     await emailService.sendWelcomeEmail(user);
+    await emailService.sendAccountVerificationSuccessEmail(user);
 
     return user;
   },
@@ -165,7 +165,7 @@ export const authService = {
     const user = await authRepository.findUserById(userId);
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Account does not exist");
     }
 
     if (user.isVerified) {
@@ -256,6 +256,9 @@ export const authService = {
 
     // Revoke all sessions to force re-login
     await authRepository.revokeAllUserSessions(user.id);
+
+    // Send password reset success email
+    await emailService.sendPasswordResetSuccessEmail(user);
 
     return user;
   },

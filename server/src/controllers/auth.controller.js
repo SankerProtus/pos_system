@@ -5,9 +5,7 @@ import passport from "passport";
 import { authRepository } from "../repositories/auth.repository.js";
 import { generateToken } from "../config/jwt.js";
 
-/**
- * Authentication Controller Layer
- */
+  // =============== Authentication Controller Layer =============== //
 export const authController = {
   /**
    * User signup
@@ -123,9 +121,6 @@ export const authController = {
   resendVerification: async (req, res) => {
     try {
       const { email } = req.body;
-
-      // Get user by email - we need to add this method to service
-      const { authRepository } = await import("../repositories/auth.repository.js");
       const user = await authRepository.findUserByEmail(email);
 
       if (!user) {
@@ -149,6 +144,7 @@ export const authController = {
       });
     }
   },
+  
   /**
    * Request password reset
    * POST /api/auth/password-reset-request

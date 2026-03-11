@@ -160,8 +160,8 @@ export const validateChangePassword = [
     .withMessage("Current password is required")
     .trim(),
   body("newPassword")
-    .isLength({ min: 8 })
-    .withMessage("New password must be at least 8 characters")
+    .isLength({ min: 6 })
+    .withMessage("New password must be at least 6 characters")
     .matches(/\d/)
     .withMessage("New password must contain at least one number")
     .matches(/[a-zA-Z]/)

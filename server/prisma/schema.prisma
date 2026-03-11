@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -71,7 +65,7 @@ model User {
   id           String   @id @default(cuid())
   name         String   @db.VarChar(100)
   email        String   @unique @db.VarChar(150)
-  passwordHash String   @db.Text         // bcrypt hash, never the plain password
+  passwordHash String   @db.Text
   role         Role     @default(CASHIER)
   pin          String?  @db.VarChar(6)   // Optional 6-digit quick PIN for cashier screen
   isActive     Boolean  @default(true)   // Soft-disable without deleting history
@@ -122,7 +116,7 @@ model PasswordReset {
 model UserSession {
   id        String   @id @default(cuid())
   userId    String
-  jti       String   @unique  // JWT ID — matched on every request
+  jti       String   @unique  
   issuedAt  DateTime @default(now())
   expiresAt DateTime
   revokedAt DateTime?          // Set on logout

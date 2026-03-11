@@ -27,3 +27,22 @@ export const passwordResetTemplate = (code) => `
     <p>Best regards,<br/>The POS System Team</p>
   </div>
 `;
+
+export const accountVerificationSuccessTemplate = (name) => `
+  <div style="font-family: Arial, sans-serif; color: #333;">
+    <h1 style="color: #4CAF50;">Account Verified - POS System</h1>
+    <p>Congratulations ${name}! Your account has been successfully verified.</p>
+    <p>You can now log in to your account and start using our POS System to manage your sales, inventory, and customers.</p>
+    <p>If you have any questions or need assistance, feel free to reach out to our support team.</p>
+    <p>Best regards,<br/>The POS System Team</p>
+  </div>
+`;
+
+export const passwordResetSuccessTemplate = (name) => `
+  <div style="font-family: Arial, sans-serif; color: #333;">
+    <h1 style="color: #4CAF50;">Password Reset Successful - POS System</h1>
+    <p>Hi ${name}, your password has been successfully reset.</p>
+    <p>You can now log in to your account with your new password. If you did not perform this action, please contact our support team immediately.</p>
+    <p>Best regards,<br/>The POS System Team</p>
+  </div>
+`;

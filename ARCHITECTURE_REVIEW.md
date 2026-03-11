@@ -58,14 +58,6 @@ authRoutes.post(
 );
 ```
 
-**What it does:**
-
-- Defines API endpoints
-- Chains validators and middleware
-- Maps routes to controllers
-- **NO** business logic
-- **NO** database queries
-
 **Endpoints Implemented:**
 
 - `POST /signup` - User registration
@@ -105,13 +97,6 @@ export const validateUserRegistration = [
 ];
 ```
 
-**What it does:**
-
-- Validates all user inputs
-- Uses `express-validator`
-- Provides clear error messages
-- Prevents invalid data from reaching business logic
-
 **Validators Implemented:**
 
 - `validateUserRegistration` - Signup validation
@@ -124,32 +109,11 @@ export const validateUserRegistration = [
 - `validateLogout` - Logout validation
 - `validateChangePassword` - Change password validation
 
-**Validation Rules:**
-
-- ✅ Email format validation
-- ✅ Password strength (min 8 chars, 1 number, 1 letter)
-- ✅ Required fields check
-- ✅ Input sanitization (XSS prevention)
-- ✅ 4-digit code validation
-
 ---
 
 ### **3. ✅ Controller Layer** (`auth.controller.js`)
 
 **Status:** ✅ **CORRECT** (Refactored)
-
-**Before (WRONG):**
-
-```javascript
-❌ // Direct database queries in controller
-const user = await prisma.user.findUnique({ where: { email } });
-
-❌ // Business logic in controller
-const hashedPassword = await bcrypt.hash(password, 12);
-
-❌ // Direct Prisma operations
-await prisma.user.create({ data: {...} });
-```
 
 **After (CORRECT):**
 
@@ -189,16 +153,6 @@ signup: async (req, res) => {
 },
 ```
 
-**What it does:**
-
-- Extracts data from `req.body`
-- Calls service methods
-- Handles HTTP responses
-- Maps errors to HTTP status codes
-- **NO** database queries
-- **NO** bcrypt/JWT operations
-- **NO** business logic
-
 **Controller Methods:**
 
 - `signup` - User registration handler
@@ -209,8 +163,8 @@ signup: async (req, res) => {
 - `passwordReset` - Password reset handler
 - `logout` - Logout handler
 - `refreshToken` - Token refresh handler
-- `googleAuthController` - Google OAuth (not implemented)
-- `googleAuthCallback` - Google OAuth callback (not implemented)
+- `googleAuthController` - Google OAuth
+- `googleAuthCallback` - Google OAuth callback
 
 ---
 
@@ -280,17 +234,6 @@ createUser: async (userData, sessionData = {}) => {
 },
 ```
 
-**What it does:**
-
-- Contains ALL business logic
-- Password hashing with bcrypt
-- JWT token generation
-- Email sending coordination
-- Input validation (business rules)
-- Uses repository for data access
-- **NO** direct Prisma queries
-- **NO** HTTP handling
-
 **Service Methods:**
 
 - `createUser` - Create user with verification email
@@ -348,16 +291,6 @@ export const authRepository = {
   // ... more database operations
 };
 ```
-
-**What it does:**
-
-- Contains **ALL** database operations
-- Only Prisma queries
-- No business logic
-- No HTTP handling
-- No password hashing
-- No JWT operations
-- Pure data access layer
 
 **Repository Methods:**
 
@@ -545,22 +478,6 @@ export const authenticateToken = async (req, res, next) => {
 ---
 
 ## 📊 **ARCHITECTURE IMPROVEMENTS**
-
-### **Before vs After:**
-
-| Aspect                     | Before ❌                          | After ✅                                                           |
-| -------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
-| **Layers**                 | 3 (Routes, Controller, Middleware) | 6 (Routes, Validator, Controller, Service, Repository, Middleware) |
-| **Separation of Concerns** | Mixed logic                        | Clear separation                                                   |
-| **Database Queries**       | In controller & service            | Only in repository                                                 |
-| **Business Logic**         | In controller                      | Only in service                                                    |
-| **Testability**            | Difficult                          | Easy (can mock repository)                                         |
-| **ORM Coupling**           | Tight (Prisma everywhere)          | Loose (only in repository)                                         |
-| **Code Reuse**             | Low                                | High                                                               |
-| **Validation**             | Scattered                          | Centralized                                                        |
-| **Maintainability**        | Low                                | High                                                               |
-
----
 
 ## 🧪 **TESTING STRATEGY**
 

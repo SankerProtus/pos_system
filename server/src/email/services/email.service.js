@@ -3,7 +3,9 @@ import { transporter } from "../transporter.js";
 import {
   welcomeEmailTemplate,
   emailVerificationTemplate,
-  passwordResetTemplate
+  passwordResetTemplate,
+  accountVerificationSuccessTemplate,
+  passwordResetSuccessTemplate,
 } from "../templates/emailVerificationTemplate.js";
 import { logger } from "../../utils/logger.js";
 
@@ -63,5 +65,33 @@ export const emailService = {
         } catch (err) {
             logger.error("Error occurred while sending password reset email:", err.message || err);
         }
-    }
+    },
+
+    sendAccountVerificationSuccessEmail: async (user) => {
+        try {
+            const html = accountVerificationSuccessTemplate(user.name);
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: user.email,
+                subject: "Account Verified - POS System",
+                html,
+            });
+        } catch (err) {
+            logger.error("Error occurred while sending account verification success email:", err.message || err);
+        }
+    },
+
+    sendPasswordResetSuccessEmail: async (user) => {
+        try {
+            const html = passwordResetSuccessTemplate(user.name);
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: user.email,
+                subject: "Password Reset Successful - POS System",
+                html,
+            });
+        } catch (err) {
+            logger.error("Error occurred while sending password reset success email:", err.message || err);
+        }
+    },
 };

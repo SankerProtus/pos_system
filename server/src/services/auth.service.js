@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { authRepository } from "../repositories/auth.repository.js";
 import { generateToken } from "../config/jwt.js";
 import { emailService } from "../email/services/email.service.js";
+import { logger } from "../utils/logger.js";
 
 const SALT_ROUNDS = 12;
 const VERIFICATION_CODE_EXPIRY = 15 * 60 * 1000; // 15 minutes
@@ -50,8 +51,12 @@ export const authService = {
       userAgent: sessionData.userAgent,
     });
 
-    // Send verification email
-    await emailService.sendVerificationEmail(user);
+    // Send verification email in the background (non-blocking)
+    emailService
+      .sendVerificationEmail(user)
+      .catch((err) =>
+        logger.error("Background email error (signup verification):", err),
+      );
 
     return {
       user: {
@@ -151,9 +156,15 @@ export const authService = {
     // Mark user as verified and delete verification record
     await authRepository.verifyUserAccountTransaction(email, user.id);
 
-    // Send welcome email
-    await emailService.sendWelcomeEmail(user);
-    await emailService.sendAccountVerificationSuccessEmail(user);
+    // Send welcome emails in the background (non-blocking)
+    emailService
+      .sendWelcomeEmail(user)
+      .catch((err) => logger.error("Background email error (welcome):", err));
+    emailService
+      .sendAccountVerificationSuccessEmail(user)
+      .catch((err) =>
+        logger.error("Background email error (verification success):", err),
+      );
 
     return user;
   },
@@ -185,8 +196,12 @@ export const authService = {
       verificationCodeExpires: new Date(Date.now() + VERIFICATION_CODE_EXPIRY),
     });
 
-    // Send verification email
-    await emailService.sendVerificationEmail(user);
+    // Send verification email in the background (non-blocking)
+    emailService
+      .sendVerificationEmail(user)
+      .catch((err) =>
+        logger.error("Background email error (resend verification):", err),
+      );
 
     return true;
   },
@@ -214,8 +229,12 @@ export const authService = {
       passwordResetCodeExpires: new Date(Date.now() + VERIFICATION_CODE_EXPIRY),
     });
 
-    // Send password reset email
-    await emailService.sendPasswordResetEmail(user, code);
+    // Send password reset email in the background (non-blocking)
+    emailService
+      .sendPasswordResetEmail(user, code)
+      .catch((err) =>
+        logger.error("Background email error (password reset request):", err),
+      );
 
     return true;
   },
@@ -257,8 +276,12 @@ export const authService = {
     // Revoke all sessions to force re-login
     await authRepository.revokeAllUserSessions(user.id);
 
-    // Send password reset success email
-    await emailService.sendPasswordResetSuccessEmail(user);
+    // Send password reset success email in the background (non-blocking)
+    emailService
+      .sendPasswordResetSuccessEmail(user)
+      .catch((err) =>
+        logger.error("Background email error (password reset success):", err),
+      );
 
     return user;
   },

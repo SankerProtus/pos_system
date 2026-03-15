@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { forgotPasswordSchema } from "../schemas/authSchema.js";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail, Send, CheckCircle } from "lucide-react";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { FormInput, Button, Alert } from "../components/common";
 import { authApi } from "../api/auth.api";
 
 export const ForgotPasswordPage = () => {
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -42,7 +43,7 @@ export const ForgotPasswordPage = () => {
     return (
       <AuthLayout
         title="Check Your Email"
-        subtitle="We've sent you a password reset link"
+        subtitle="We've sent you a password reset code"
       >
         <div className="space-y-6">
           {/* Success Icon */}
@@ -55,26 +56,36 @@ export const ForgotPasswordPage = () => {
               <span className="font-semibold text-slate-800">
                 {getValues("email")}
               </span>
-              , you will receive a password reset link shortly.
+              , you will receive a password reset code shortly.
             </p>
           </div>
 
           {/* Info Alert */}
           <Alert
             type="info"
-            message="Please check your email inbox and spam folder. The link will expire in 1 hour."
+            message="Please check your email inbox and spam folder. The reset code will expire in 15 minutes."
           />
 
-          {/* Back to Login */}
+          {/* Go to Reset Password Button */}
           <Button
             type="button"
             variant="primary"
             size="lg"
             fullWidth
-            onClick={() => (window.location.href = "/login")}
+            onClick={() => navigate(`/reset-password?email=${encodeURIComponent(getValues("email"))}`)}
           >
-            Back to Login
+            Enter Reset Code
           </Button>
+
+          {/* Back to Login */}
+          <div className="text-center">
+            <Link
+              to="/login"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium transition"
+            >
+              ← Back to Login
+            </Link>
+          </div>
 
           {/* Resend Link */}
           <div className="text-center">
@@ -99,7 +110,7 @@ export const ForgotPasswordPage = () => {
         {/* Info Alert */}
         <Alert
           type="info"
-          message="Enter the email address associated with your account and we'll send you a link to reset your password."
+          message="Enter the email address associated with your account and we'll send you a code to reset your password."
         />
 
         {/* Error Alert */}
@@ -111,7 +122,7 @@ export const ForgotPasswordPage = () => {
           id="email"
           label="Email Address"
           type="email"
-          placeholder="your.email@store.com"
+          placeholder="your.email@example.com"
           icon={Mail}
           error={errors.email?.message}
           disabled={loading}
@@ -127,7 +138,7 @@ export const ForgotPasswordPage = () => {
           loading={loading}
           icon={Send}
         >
-          {loading ? "Sending..." : "Send Reset Link"}
+          {loading ? "Sending..." : "Send Reset Code"}
         </Button>
 
         {/* Back to Login */}

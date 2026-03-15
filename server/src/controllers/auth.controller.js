@@ -4,8 +4,9 @@ import { logger } from "../utils/logger.js";
 import passport from "passport";
 import { authRepository } from "../repositories/auth.repository.js";
 import { generateToken } from "../config/jwt.js";
+import { prisma } from "../lib/Prisma.js";
 
-  // =============== Authentication Controller Layer =============== //
+// =============== Authentication Controller Layer =============== //
 export const authController = {
   /**
    * User signup
@@ -13,7 +14,7 @@ export const authController = {
    */
   signup: async (req, res) => {
     try {
-      const { name, email, password } = req.body;
+      const { name, email, password, role } = req.body;
 
       const sessionData = {
         ipAddress: req.ip || req.connection?.remoteAddress,
@@ -21,12 +22,13 @@ export const authController = {
       };
 
       const result = await authService.createUser(
-        { name, email, password },
+        { name, email, password, role },
         sessionData,
       );
 
       res.status(201).json({
-        message: "User created successfully. Please check your email to verify your account.",
+        message:
+          "User created successfully. Please check your email to verify your account.",
         user: result.user,
         accessToken: result.tokens.accessToken,
         refreshToken: result.tokens.refreshToken,
@@ -102,7 +104,8 @@ export const authController = {
       if (
         error.message === "Account does not exist" ||
         error.message === "Account is already verified" ||
-        error.message === "No verification code found. Please request a new code." ||
+        error.message ===
+          "No verification code found. Please request a new code." ||
         error.message === "The verification code is invalid" ||
         error.message === "Verification code has expired"
       ) {
@@ -124,7 +127,10 @@ export const authController = {
       const user = await authRepository.findUserByEmail(email);
 
       if (!user) {
-        return res.status(400).json({ error: "Account does not exist" });
+        return res.status(200).json({
+          message:
+            "If this email is registered, a verification code will be sent shortly.",
+        });
       }
 
       if (user.isVerified) {
@@ -144,7 +150,7 @@ export const authController = {
       });
     }
   },
-  
+
   /**
    * Request password reset
    * POST /api/auth/password-reset-request
@@ -178,14 +184,16 @@ export const authController = {
       await authService.resetPassword(email, code, newPassword);
 
       res.status(200).json({
-        message: "Password reset successfully. Please login with your new password.",
+        message:
+          "Password reset successfully. Please login with your new password.",
       });
     } catch (error) {
       logger.error("Password reset error:", error.message);
 
       if (
         error.message === "Account does not exist" ||
-        error.message === "No password reset request found. Please request a new password reset." ||
+        error.message ===
+          "No password reset request found. Please request a new password reset." ||
         error.message === "The password reset code is invalid" ||
         error.message === "Password reset code has expired"
       ) {
@@ -245,25 +253,13 @@ export const authController = {
         process.env.REFRESH_TOKEN_SECRET,
       );
 
-      // Check if session is revoked
-      if (decoded.jti) {
-        const session = await prisma.userSession.findUnique({
-          where: { jti: decoded.jti },
-        });
-        // Create new user session
-        await prisma.userSession.create({
-          data: {
-            userId: user.id,
-            jti: tokens.jti,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            ipAddress: req.ip || req.connection.remoteAddress,
-            userAgent: req.headers["user-agent"],
-          },
-        });
+      // Check if session exists and is not revoked
+      const session = await prisma.userSession.findUnique({
+        where: { jti: decoded.jti },
+      });
 
-        if (!session || session.revokedAt) {
-          return res.status(401).json({ error: "Session has been revoked" });
-        }
+      if (!session || session.revokedAt) {
+        return res.status(401).json({ error: "Session has been revoked" });
       }
 
       // Get fresh user data
@@ -284,10 +280,7 @@ export const authController = {
         refreshToken: tokens.refreshToken,
       });
     } catch (error) {
-      logger.error(
-        "Error occurred while refreshing token:",
-        error.message || error,
-      );
+      logger.error("Error occurred while refreshing token:", error);
 
       if (error.name === "JsonWebTokenError") {
         return res.status(401).json({ error: "Invalid refresh token" });
@@ -296,11 +289,9 @@ export const authController = {
         return res.status(401).json({ error: "Refresh token has expired" });
       }
 
-      res
-        .status(500)
-        .json({
-          error: "Hmm... Something went wrong. Please try again later.",
-        });
+      res.status(500).json({
+        error: "Hmm... Something went wrong. Please try again later.",
+      });
     }
   },
 
@@ -318,40 +309,37 @@ export const authController = {
    * GET /api/auth/google/callback
    */
   googleAuthCallback: async (req, res, next) => {
-    passport.authenticate("google", { session: false }, async (err, user, info) => {
-      if (err) {
-        logger.error("Google authentication error:", err.message || err);
-        return res.status(500).json({ error: "Google authentication failed" });
-      }
+    passport.authenticate(
+      "google",
+      { session: false },
+      async (err, user, info) => {
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
 
-      if (!user) {
-        return res.status(401).json({ error: "Google authentication failed" });
-      }
+        if (err) {
+          logger.error("Google authentication error:", err.message || err);
+          return res.redirect(`${frontendUrl}/auth/callback?error=authentication_failed`);
+        }
 
-      // Generate tokens for the authenticated user
-      const { accessToken, refreshToken, jti } = generateToken(user);
-      // Create user session
-      await authRepository.createSession({
-        userId: user.id,
-        jti,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        ipAddress: req.ip || req.connection.remoteAddress,
-        userAgent: req.headers["user-agent"],
-      });
+        if (!user) {
+          return res.redirect(`${frontendUrl}/auth/callback?error=user_not_found`);
+        }
 
-      const userWithoutPassword = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      };
+        // Generate tokens for the authenticated user
+        const { accessToken, refreshToken, jti } = generateToken(user);
+        // Create user session
+        await authRepository.createSession({
+          userId: user.id,
+          jti,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
 
-      res.status(200).json({
-        message: "Google authentication successful",
-        user: userWithoutPassword,
-        accessToken,
-        refreshToken,
-      });
-    })(req, res, next);
-  }
+        // Redirect to frontend with tokens as URL params
+        const redirectUrl = `${frontendUrl}/auth/callback?token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+
+        res.redirect(redirectUrl);
+      },
+    )(req, res, next);
+  },
 };

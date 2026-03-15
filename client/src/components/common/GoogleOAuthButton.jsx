@@ -8,7 +8,7 @@ export const GoogleOAuthButton = ({ onClick, loading = false, text = "Continue w
       fullWidth
       onClick={onClick}
       loading={loading}
-      className="relative"
+      className="relative hover:cursor-pointer"
     >
       {!loading && (
         <svg className="w-5 h-5" viewBox="0 0 24 24">

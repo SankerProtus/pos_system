@@ -10,12 +10,10 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: "/auth/password-reset",
     GOOGLE_LOGIN: "/auth/google",
   },
-  RESOURCES: {
-    GET_ALL: "/resources",
-    GET_ONE: "/resources/:id",
-    CREATE: "/resources",
-    UPDATE: "/resources/:id",
-    DELETE: "/resources/:id",
+  DASHBOARD: {
+    GET_DAILY: "/reports/daily?date=:date",
+    GET_WEEKLY: "/reports/weekly",
+    GET_SALES: "/sales?limit=5&status=COMPLETED",
   },
   USERS: {
     GET_PROFILE: "/users/profile",
@@ -41,6 +39,7 @@ export const ROUTES = {
 // Storage keys
 export const STORAGE_KEYS = {
   TOKEN: "token",
+  REFRESH_TOKEN: "refreshToken",
   USER: "user",
 };
 

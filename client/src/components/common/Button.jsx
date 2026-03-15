@@ -1,3 +1,4 @@
+import { isValidElement } from "react";
 import { Loader2 } from "lucide-react";
 
 export const Button = ({
@@ -8,11 +9,27 @@ export const Button = ({
   disabled = false,
   fullWidth = false,
   icon: Icon,
+  leftIcon,
+  rightIcon,
   iconPosition = "left",
   className = "",
   type = "button",
   ...props
 }) => {
+  const renderIcon = (iconValue) => {
+    if (!iconValue) return null;
+
+    if (isValidElement(iconValue)) {
+      return iconValue;
+    }
+
+    const IconComponent = iconValue;
+    return <IconComponent size={18} />;
+  };
+
+  const leadingIcon = leftIcon ?? (iconPosition === "left" ? Icon : null);
+  const trailingIcon = rightIcon ?? (iconPosition === "right" ? Icon : null);
+
   const baseStyles = `
     inline-flex items-center justify-center gap-2
     font-medium rounded-lg
@@ -73,16 +90,22 @@ export const Button = ({
       disabled={disabled || loading}
       className={`
         ${baseStyles}
-        ${variants[variant]}
-        ${sizes[size]}
+        ${variants[variant] || variants.primary}
+        ${sizes[size] || sizes.md}
         ${className}
+        hover:cursor-pointer
       `}
       {...props}
     >
-      {loading && <Loader2 className="animate-spin" size={18} />}
-      {!loading && Icon && iconPosition === "left" && <Icon size={18} />}
-      {children}
-      {!loading && Icon && iconPosition === "right" && <Icon size={18} />}
+      {loading ? (
+        <Loader2 className="animate-spin" size={20} />
+      ) : (
+        <>
+          {renderIcon(leadingIcon)}
+          {children}
+          {renderIcon(trailingIcon)}
+        </>
+      )}
     </button>
   );
 };

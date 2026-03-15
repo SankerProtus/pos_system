@@ -1,5 +1,5 @@
 import { apiClient } from "./axios";
-import { API_ENDPOINTS } from "../constants/index.js";
+import { API_ENDPOINTS, STORAGE_KEYS } from "../constants/index.js";
 
 export const authApi = {
   signup: async (formData) => {
@@ -23,7 +23,10 @@ export const authApi = {
   },
   logout: async () => {
     try {
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, {
+        refreshToken,
+      });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : error;
@@ -31,7 +34,10 @@ export const authApi = {
   },
   verifyEmail: async (formData) => {
     try {
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, formData);
+      const response = await apiClient.post(
+        API_ENDPOINTS.AUTH.VERIFY_EMAIL,
+        formData,
+      );
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : error;
@@ -48,7 +54,7 @@ export const authApi = {
       throw error.response ? error.response.data : error;
     }
   },
-  
+
   forgotPassword: async (email) => {
     try {
       const response = await apiClient.post(
@@ -66,16 +72,6 @@ export const authApi = {
         API_ENDPOINTS.AUTH.RESET_PASSWORD,
         formData,
       );
-      return response.data;
-    } catch (error) {
-      throw error.response ? error.response.data : error;
-    }
-  },
-  googleLogin: async (token) => {
-    try {
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, {
-        token,
-      });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : error;

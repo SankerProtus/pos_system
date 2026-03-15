@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Store, ShoppingCart } from "lucide-react";
+import { Store } from "lucide-react";
 
 export const AuthLayout = ({ children, title, subtitle }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-linear-to-br from-slate-100 via-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
@@ -16,7 +16,7 @@ export const AuthLayout = ({ children, title, subtitle }) => {
               <p className="text-xs text-slate-500 font-medium">Point of Sale System</p>
             </div>
           </Link>
-          
+
           {/* Page Title */}
           {title && (
             <div className="mt-6">

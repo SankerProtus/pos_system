@@ -11,7 +11,7 @@ const CODE_LENGTH = 4;
 export const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const emailFromUrl = searchParams.get("email") || "";
-  
+
   const [code, setCode] = useState(["", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +19,7 @@ export const VerifyEmailPage = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [canResend, setCanResend] = useState(true);
   const [countdown, setCountdown] = useState(0);
-  
+
   const inputRefs = useRef([]);
   const navigate = useNavigate();
 
@@ -58,7 +58,7 @@ export const VerifyEmailPage = () => {
   const handlePaste = (e) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").slice(0, CODE_LENGTH);
-    
+
     if (!/^\d+$/.test(pastedData)) {
       setError("Please paste only numbers");
       return;
@@ -69,7 +69,7 @@ export const VerifyEmailPage = () => {
       newCode[i] = pastedData[i];
     }
     setCode(newCode);
-    
+
     // Focus on the next empty input or the last input
     const nextEmptyIndex = newCode.findIndex((val) => !val);
     if (nextEmptyIndex !== -1) {
@@ -81,11 +81,18 @@ export const VerifyEmailPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const verificationCode = code.join("");
-    
+
     if (verificationCode.length !== CODE_LENGTH) {
       setError(`Please enter all ${CODE_LENGTH} digits`);
+      return;
+    }
+
+    if (!emailFromUrl) {
+      setError(
+        "Email address is missing. Please use the link from your email.",
+      );
       return;
     }
 
@@ -93,20 +100,34 @@ export const VerifyEmailPage = () => {
     setError("");
 
     try {
+      console.log("Sending verification:", {
+        email: emailFromUrl,
+        code: verificationCode,
+      });
+
       await authApi.verifyEmail({
         email: emailFromUrl,
         code: verificationCode,
       });
-      
+
       setSuccess(true);
       toast.success("Email verified successfully!");
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate("/login");
       }, 2000);
     } catch (err) {
-      setError(err.message || "Invalid verification code. Please try again.");
+      console.error("Verification error:", err);
+
+      // Handle validation errors with details
+      const errorMessage = err.details
+        ? err.details.map((d) => `${d.path}: ${d.msg}`).join(", ")
+        : err.error ||
+          err.message ||
+          "Invalid verification code. Please try again.";
+
+      setError(errorMessage);
       // Clear the code on error
       setCode(["", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -125,7 +146,7 @@ export const VerifyEmailPage = () => {
       await authApi.resendVerification(emailFromUrl);
       toast.success("Verification code sent to your email!");
       setCanResend(false);
-      setCountdown(60); // 60 seconds cooldown
+      setCountdown(60);
       // Clear the code
       setCode(["", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -147,7 +168,8 @@ export const VerifyEmailPage = () => {
             <CheckCircle className="text-green-600" size={32} />
           </div>
           <p className="text-slate-600">
-            Your email has been successfully verified. You can now sign in to your account.
+            Your email has been successfully verified. You can now sign in to
+            your account.
           </p>
         </div>
       </AuthLayout>
@@ -229,8 +251,8 @@ export const VerifyEmailPage = () => {
             {countdown > 0
               ? `Resend in ${countdown}s`
               : resendLoading
-              ? "Sending..."
-              : "Resend Code"}
+                ? "Sending..."
+                : "Resend Code"}
           </Button>
         </div>
 

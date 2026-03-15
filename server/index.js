@@ -4,6 +4,8 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { authRoutes } from "./src/routes/auth.routes.js";
+import { salesRoutes } from "./src/routes/sales.routes.js";
+import { usersRouter } from './src/routes/users.routes.js';
 import passport from "./src/config/PassportConfig.js";
 
 dotenv.config();
@@ -12,11 +14,17 @@ const app = express();
 app.use(passport.initialize());
 
 // Middleware
-const allowedOrigins = [process.env.FRONTEND_URL || "http://localhost:5173"];
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:5173",
+  process.env.FRONTEND_URL || "http://localhost:5173"
+];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -37,11 +45,8 @@ app.get("/health-check", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
-// app.use("/api/products", productRoutes);
-// app.use("/api/inventory", inventoryRoutes);
-// app.use("/api/sales", salesRoutes);
-// app.use("/api/customers", customerRoutes);
-// app.use("/api/reports", reportRoutes);
+app.use("/api/sales", salesRoutes);
+app.use("/api/users", usersRouter);
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server is running on port http://localhost:${process.env.PORT || 5000}`);

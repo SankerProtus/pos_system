@@ -6,14 +6,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "react-router-dom";
 import { Mail, Lock, LogIn } from "lucide-react";
 import { AuthLayout } from "../components/auth/AuthLayout";
-import { FormInput, Button, GoogleOAuthButton, Alert } from "../components/common";
+import {
+  FormInput,
+  Button,
+  GoogleOAuthButton,
+  Alert,
+} from "../components/common";
 
 export const LoginPage = () => {
   const {
     register,
     handleSubmit,
     formState: { errors },
-    watch,
   } = useForm({
     resolver: zodResolver(loginSchema),
   });
@@ -27,8 +31,9 @@ export const LoginPage = () => {
   };
 
   const handleGoogleLogin = () => {
-    // TODO: Implement Google OAuth flow
-    console.log("Google login clicked");
+    // Redirect to backend Passport OAuth endpoint
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   return (
@@ -105,7 +110,9 @@ export const LoginPage = () => {
             <div className="w-full border-t border-slate-300"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-slate-500">Or continue with</span>
+            <span className="px-4 bg-white text-slate-500">
+              Or continue with
+            </span>
           </div>
         </div>
 

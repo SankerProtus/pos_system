@@ -10,7 +10,7 @@ export const authenticateToken = async (req, res, next) => {
   try {
     // Get token from Authorization header
     const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1]; 
+    const token = authHeader && authHeader.split(" ")[1];
     if (!token) {
       return res.status(401).json({ error: "Access token is required" });
     }
@@ -166,6 +166,27 @@ export const requireRole = (...allowedRoles) => {
 
     next();
   };
+};
+
+// Middleware to allow access to both the admin and the user themselves
+export const requireAdminOrSelf = (userIdParam = "id") => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const resourceUserId = req.params[userIdParam] || req.body.userId;
+
+    if (req.user.role !== "ADMIN" && req.user.id !== resourceUserId) {
+      return res.status(403).json({
+        error: "Access denied. You must be an admin or the owner of this resource.",
+        requiredRole: "ADMIN or self",
+        currentRole: req.user.role,
+      });
+    }
+    next();
+
+  }
 };
 
 /**

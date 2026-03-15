@@ -28,7 +28,7 @@ const ROLES = [
   { value: "admin", label: "Admin", description: "Full system access" },
 ];
 
-export const RegisterForm = () => {
+export const RegisterPage = () => {
   const {
     register,
     handleSubmit,
@@ -37,7 +37,7 @@ export const RegisterForm = () => {
   } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      role: "cashier",
+      role: "",
     },
   });
 
@@ -52,8 +52,10 @@ export const RegisterForm = () => {
   };
 
   const handleGoogleSignup = () => {
-    // TODO: Implement Google OAuth flow
-    console.log("Google signup clicked");
+    // Redirect to backend Passport OAuth endpoint
+    const apiUrl =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   return (
@@ -83,7 +85,7 @@ export const RegisterForm = () => {
           id="email"
           label="Email Address"
           type="email"
-          placeholder="your.email@store.com"
+          placeholder="your.email@example.com"
           icon={Mail}
           error={errors.email?.message}
           disabled={loading}
@@ -91,49 +93,37 @@ export const RegisterForm = () => {
 
         {/* Role Selector */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label
+            htmlFor="role"
+            className="block text-sm font-medium text-slate-700 mb-2"
+          >
             <div className="flex items-center gap-2">
               <Shield size={16} />
               Role
             </div>
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <select
+            id="role"
+            {...register("role")}
+            disabled={loading}
+            className={`
+              w-full px-4 py-2.5 rounded-lg border
+              ${errors.role ? "border-red-500" : "border-slate-300"}
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              disabled:opacity-50 disabled:cursor-not-allowed
+              bg-white
+              ${watch("role") === "" ? "text-slate-400" : "text-slate-900"}
+            `}
+          >
+            <option value="" disabled>
+              -- Select Role --
+            </option>
             {ROLES.map((role) => (
-              <label
-                key={role.value}
-                className={`
-                  relative flex flex-col items-center justify-center
-                  p-3 rounded-lg border-2 cursor-pointer transition
-                  ${
-                    watch("role") === role.value
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-slate-300 bg-white hover:border-slate-400"
-                  }
-                  ${loading ? "opacity-50 cursor-not-allowed" : ""}
-                `}
-              >
-                <input
-                  type="radio"
-                  {...register("role")}
-                  value={role.value}
-                  disabled={loading}
-                  className="sr-only"
-                />
-                <span
-                  className={`text-sm font-semibold ${
-                    watch("role") === role.value
-                      ? "text-blue-700"
-                      : "text-slate-700"
-                  }`}
-                >
-                  {role.label}
-                </span>
-                <span className="text-xs text-slate-500 text-center mt-1">
-                  {role.description}
-                </span>
-              </label>
+              <option key={role.value} value={role.value}>
+                {role.label} - {role.description}
+              </option>
             ))}
-          </div>
+          </select>
           {errors.role && (
             <p className="mt-1.5 text-sm text-red-600 flex items-center gap-1">
               <span className="inline-block w-1 h-1 bg-red-600 rounded-full"></span>

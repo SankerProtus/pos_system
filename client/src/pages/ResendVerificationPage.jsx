@@ -33,7 +33,7 @@ export const ResendVerificationPage = () => {
     try {
       await authApi.resendVerification(data.email);
       setSuccess(true);
-      
+
       // Set cooldown to prevent spam (60 seconds)
       setCooldown(60);
       const interval = setInterval(() => {
@@ -154,7 +154,7 @@ export const ResendVerificationPage = () => {
           id="email"
           label="Email Address"
           type="email"
-          placeholder="your.email@store.com"
+          placeholder="your.email@example.com"
           icon={Mail}
           error={errors.email?.message}
           disabled={loading || cooldown > 0}

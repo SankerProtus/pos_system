@@ -36,3 +36,6 @@
 {"level":"info","message":"✅ Email transporter is ready to send messages"}
 {"level":"info","message":"✅ Email transporter is ready to send messages"}
 {"level":"error","message":"Error in authenticateToken middleware:"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"User cmmw5ageg0000jbk8q6nv5ll8 updating user cmmw5ageg0000jbk8q6nv5ll8: {\"name\":\"Thea Queen\",\"email\":\"chatterlyteam@gmail.com\",\"role\":\"CASHIER\",\"pin\":\"456776\"}"}
+{"level":"info","message":"User cmmw5ageg0000jbk8q6nv5ll8 updating user cmmw5ageg0000jbk8q6nv5ll8: {\"name\":\"Thea Queen\",\"email\":\"chatterlyteam@gmail.com\",\"pin\":\"456776\"}"}

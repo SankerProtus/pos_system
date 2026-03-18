@@ -5,6 +5,12 @@ import { requireAdminOrSelf } from "../middlewares/auth.middleware.js";
 import { usersController } from "../controllers/users.controller.js";
 
 const router = express.Router();
+// Get authenticated user's profile
+router.get(
+  "/profile",
+  (req, res, next) => next(), // authenticateToken already applied globally
+  usersController.getProfile,
+);
 router.use(authenticateToken);
 
 // Get all users (admin only)

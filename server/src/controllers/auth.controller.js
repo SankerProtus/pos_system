@@ -34,7 +34,7 @@ export const authController = {
         refreshToken: result.tokens.refreshToken,
       });
     } catch (error) {
-      logger.error("Signup error:", error.message);
+      logger.error("Signup error:", error);
 
       if (error.message === "Account already exists") {
         return res.status(400).json({ error: error.message });

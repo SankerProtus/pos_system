@@ -43,6 +43,21 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  // Add refreshUser method
+  const refreshUser = async () => {
+    try {
+      const { fetchProfile } = await import("../api/auth.api");
+      const user = await fetchProfile();
+      setAuthState((prev) => ({
+        ...prev,
+        user,
+      }));
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+    } catch (error) {
+      // Optionally handle error
+    }
+  };
+
   const logout = () => {
     setAuthState({
       isAuthenticated: false,
@@ -53,7 +68,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,6 @@ const router = express.Router();
 
 router.get("/", salesController.getSales);
 router.post("/", salesController.createSale);
-// router.post("/:id/void", salesController.voidSale);
+router.post("/:id/void", salesController.voidSale);
 
 export { router as salesRoutes };

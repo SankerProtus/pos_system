@@ -1,53 +1,58 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { Topbar } from '../components/layout/Topbar';
-import { Button } from '../components/common/Button';
-import { DataTable } from '../components/shared/DataTable';
-import { KpiCard } from '../components/shared/KpiCard';
-import { Modal } from '../components/common/Modal';
-import { Select } from '../components/common/Select';
-import { FormInput } from '../components/common/FormInput';
-import { Badge } from '../components/common/Badge';
-import { apiClient } from '../api/axios';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { Topbar } from "../components/layout/Topbar";
+import { Button } from "../components/common/Button";
+import { DataTable } from "../components/shared/DataTable";
+import { KpiCard } from "../components/shared/KpiCard";
+import { Modal } from "../components/common/Modal";
+import { Select } from "../components/common/Select";
+import { FormInput } from "../components/common/FormInput";
+import { Badge } from "../components/common/Badge";
+import { apiClient } from "../api/axios";
 import { formatDate } from "../utils/formatDate";
-import { Package, Download } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Package, Download } from "lucide-react";
+import toast from "react-hot-toast";
 
 export const InventoryPage = () => {
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [adjustmentReason, setAdjustmentReason] = useState('PURCHASE');
+  const [adjustmentReason, setAdjustmentReason] = useState("PURCHASE");
 
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm();
 
   const { data: inventory, isLoading } = useQuery({
-    queryKey: ['inventory'],
+    queryKey: ["inventory"],
     queryFn: async () => {
-      const response = await apiClient.get('/inventory');
+      const response = await apiClient.get("/inventory");
       return response.data;
     },
   });
 
   const adjustStockMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await apiClient.post('/inventory/adjust', data);
+      const response = await apiClient.post("/inventory/adjust", data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['inventory']);
-      toast.success('Stock adjusted successfully');
+      queryClient.invalidateQueries(["inventory"]);
+      toast.success("Stock adjusted successfully");
       setIsAdjustModalOpen(false);
       setSelectedProduct(null);
       reset();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to adjust stock');
+      toast.error(error.response?.data?.message || "Failed to adjust stock");
     },
   });
 
-  const handleOpenAdjust = (product, reason = 'PURCHASE') => {
+  const handleOpenAdjust = (product, reason = "PURCHASE") => {
     setSelectedProduct(product);
     setAdjustmentReason(reason);
     reset({ quantityChange: 0 });
@@ -68,44 +73,54 @@ export const InventoryPage = () => {
     const qty = item.quantity;
     const threshold = item.lowStockThreshold;
 
-    if (qty === 0) return { variant: 'red', label: 'Out of Stock' };
-    if (qty <= threshold) return { variant: 'red', label: 'Low Stock' };
-    if (qty <= threshold * 1.5) return { variant: 'amber', label: 'Medium' };
-    return { variant: 'green', label: 'In Stock' };
+    if (qty === 0) return { variant: "red", label: "Out of Stock" };
+    if (qty <= threshold) return { variant: "red", label: "Low Stock" };
+    if (qty <= threshold * 1.5) return { variant: "amber", label: "Medium" };
+    return { variant: "green", label: "In Stock" };
   };
 
   const getProgressColor = (item) => {
     const qty = item.quantity;
     const threshold = item.lowStockThreshold;
 
-    if (qty <= threshold) return 'bg-red-500';
-    if (qty <= threshold * 1.5) return 'bg-amber-500';
-    return 'bg-emerald-500';
+    if (qty <= threshold) return "bg-red-500";
+    if (qty <= threshold * 1.5) return "bg-amber-500";
+    return "bg-emerald-500";
   };
 
   const totalSKUs = inventory?.data?.length || 0;
-  const lowStockCount = inventory?.data?.filter((item) => item.quantity <= item.lowStockThreshold).length || 0;
-  const outOfStockCount = inventory?.data?.filter((item) => item.quantity === 0).length || 0;
-  const totalUnits = inventory?.data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const lowStockCount =
+    inventory?.data?.filter((item) => item.quantity <= item.lowStockThreshold)
+      .length || 0;
+  const outOfStockCount =
+    inventory?.data?.filter((item) => item.quantity === 0).length || 0;
+  const totalUnits =
+    inventory?.data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   const columns = [
     {
-      key: 'product',
-      header: 'Product',
+      key: "product",
+      header: "Product",
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-100">{row.product.name}</p>
-          <p className="text-xs text-slate-500">{row.product.category.name}</p>
+          <p className="font-medium text-slate-100">
+            {row.product.productName}
+          </p>
+          <p className="text-xs text-slate-500">
+            {row.product.category?.name || "—"}
+          </p>
           <p className="text-xs text-slate-500 font-mono">{row.product.sku}</p>
         </div>
       ),
     },
     {
-      key: 'quantity',
-      header: 'Quantity',
+      key: "quantity",
+      header: "Quantity",
       render: (row) => (
         <div>
-          <p className="font-mono font-semibold text-slate-100 mb-1">{row.quantity}</p>
+          <p className="font-mono font-semibold text-slate-100 mb-1">
+            {row.quantity}
+          </p>
           <div className="w-full bg-[#0f172a] rounded-full h-2">
             <div
               className={`h-2 rounded-full ${getProgressColor(row)}`}
@@ -118,52 +133,53 @@ export const InventoryPage = () => {
       ),
     },
     {
-      key: 'lowStockThreshold',
-      header: 'Low Level',
-      render: (row) => <span className="font-mono">{row.lowStockThreshold}</span>,
+      key: "lowStockLevel",
+      header: "Low Level",
+      render: (row) => <span className="font-mono">{row.lowStockLevel}</span>,
     },
     {
-      key: 'reorderQuantity',
-      header: 'Reorder Qty',
-      render: (row) => <span className="font-mono">{row.reorderQuantity}</span>,
+      key: "reorderQuantity",
+      header: "Reorder Qty",
+      render: (row) => <span className="font-mono">{row.reorderPoint}</span>,
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: "status",
+      header: "Status",
       render: (row) => {
         const status = getStockStatus(row);
         return <Badge variant={status.variant}>{status.label}</Badge>;
       },
     },
     {
-      key: 'supplier',
-      header: 'Supplier',
-      render: (row) => row.supplier?.name || 'N/A',
+      key: "supplier",
+      header: "Supplier",
+      render: (row) =>
+        row.product.supplierProducts?.[0]?.supplier?.name || "N/A",
     },
     {
-      key: 'lastRestockedAt',
-      header: 'Last Restocked',
+      key: "lastRestockedAt",
+      header: "Last Restocked",
       render: (row) =>
         row.lastRestockedAt
           ? formatDate.standard(row.lastRestockedAt)
-          : 'Never',
+          : "Never",
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       render: (row) => (
         <div className="flex gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleOpenAdjust(row, 'CORRECTION')}
+            onClick={() => handleOpenAdjust(row, "CORRECTION")}
           >
             Adjust
           </Button>
           <Button
             variant="primary"
             size="sm"
-            onClick={() => handleOpenAdjust(row, 'PURCHASE')}
+            onClick={() => handleOpenAdjust(row, "PURCHASE")}
           >
             Restock
           </Button>
@@ -173,12 +189,12 @@ export const InventoryPage = () => {
   ];
 
   const reasonOptions = [
-    { value: 'PURCHASE', label: 'Purchase' },
-    { value: 'DAMAGE', label: 'Damage' },
-    { value: 'THEFT', label: 'Theft' },
-    { value: 'CORRECTION', label: 'Correction' },
-    { value: 'RETURN', label: 'Return' },
-    { value: 'OPENING_STOCK', label: 'Opening Stock' },
+    { value: "PURCHASE", label: "Purchase" },
+    { value: "DAMAGE", label: "Damage" },
+    { value: "THEFT", label: "Theft" },
+    { value: "CORRECTION", label: "Correction" },
+    { value: "RETURN", label: "Return" },
+    { value: "OPENING_STOCK", label: "Opening Stock" },
   ];
 
   return (
@@ -268,8 +284,8 @@ export const InventoryPage = () => {
             />
 
             <FormInput
-              {...register('quantityChange', {
-                required: 'Quantity change is required',
+              {...register("quantityChange", {
+                required: "Quantity change is required",
               })}
               label="Quantity Change"
               type="number"
@@ -278,7 +294,7 @@ export const InventoryPage = () => {
             />
 
             <FormInput
-              {...register('reference')}
+              {...register("reference")}
               label="Reference"
               placeholder="Purchase order / invoice number"
             />
@@ -288,7 +304,7 @@ export const InventoryPage = () => {
                 Notes
               </label>
               <textarea
-                {...register('notes')}
+                {...register("notes")}
                 rows={3}
                 className="w-full px-4 py-2.5 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                 placeholder="Additional notes..."

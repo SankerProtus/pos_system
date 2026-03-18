@@ -12,10 +12,12 @@ import { Select } from "../components/common/Select";
 import { Badge } from "../components/common/Badge";
 import { apiClient } from "../api/axios";
 import { formatDate } from "../utils/formatDate";
+import { useAuth } from "../hooks/useAuth";
 import { UserPlus, Edit, Power } from "lucide-react";
 import toast from "react-hot-toast";
 
 export const UsersPage = () => {
+  const { user, refreshUser } = useAuth();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -58,12 +60,16 @@ export const UsersPage = () => {
       const response = await apiClient.patch(`/users/${id}`, data);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       queryClient.invalidateQueries(["users"]);
       toast.success("User updated successfully");
       setIsFormModalOpen(false);
       setEditingUser(null);
       reset();
+      // Refresh user context if updated user is the authenticated user
+      if (updatedUser.id === user?.id && refreshUser) {
+        refreshUser();
+      }
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Failed to update user");

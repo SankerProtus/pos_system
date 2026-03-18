@@ -11,7 +11,11 @@ export const salesRepository = {
       },
       take: Number.isInteger(parseLimit) ? parseLimit : undefined,
       include: {
+        user: true,
+        customer: true,
+        saleItems: true,
         payment: true,
+        receipt: true,
       },
     });
   },
@@ -55,6 +59,12 @@ export const salesRepository = {
   getSalesByLimit: async (limit) => {
     return await prisma.sale.findMany({
       take: limit ? parseInt(limit) : undefined,
+    });
+  },
+  voidSale: async (saleId) => {
+    return await prisma.sale.update({
+      where: { id: saleId },
+      data: { status: "VOIDED" },
     });
   },
 };

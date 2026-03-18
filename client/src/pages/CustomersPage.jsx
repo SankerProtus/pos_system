@@ -105,7 +105,7 @@ export const CustomersPage = () => {
   const totalCustomers = customers?.data?.length || 0;
   const totalLoyaltyPoints = customers?.data?.reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0) || 0;
   const avgSpend = totalCustomers > 0
-    ? customers.data.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / totalCustomers
+    ? customers?.data?.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / totalCustomers
     : 0;
 
   const columns = [
@@ -218,7 +218,11 @@ export const CustomersPage = () => {
         title="Customer Management"
         subtitle="Manage your customer database"
         actions={
-          <Button variant="primary" icon={<UserPlus size={18} />} onClick={handleOpenCreate}>
+          <Button
+            variant="primary"
+            icon={<UserPlus size={18} />}
+            onClick={handleOpenCreate}
+          >
             New Customer
           </Button>
         }
@@ -248,13 +252,16 @@ export const CustomersPage = () => {
 
         {/* Search */}
         <div className="mb-5">
-          <SearchInput onSearch={setSearchTerm} placeholder="Search customers..." />
+          <SearchInput
+            onSearch={setSearchTerm}
+            placeholder="Search customers..."
+          />
         </div>
 
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={customers?.data || []}
+          data={Array.isArray(customers) ? customers : customers?.data || []}
           isLoading={isLoading}
           emptyMessage="No customers found"
         />
@@ -268,23 +275,23 @@ export const CustomersPage = () => {
           setEditingCustomer(null);
           reset();
         }}
-        title={editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+        title={editingCustomer ? "Edit Customer" : "Add New Customer"}
         width={500}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="p-6">
           <div className="space-y-4 mb-6">
             <FormInput
-              {...register('name', { required: 'Name is required' })}
+              {...register("name", { required: "Name is required" })}
               label="Full Name"
               placeholder="Enter full name"
               error={errors.name?.message}
             />
             <FormInput
-              {...register('phone', {
-                required: 'Phone is required',
+              {...register("phone", {
+                required: "Phone is required",
                 pattern: {
                   value: /^\+?233[0-9]{9}$/,
-                  message: 'Phone must be in format +233XXXXXXXXX',
+                  message: "Phone must be in format +233XXXXXXXXX",
                 },
               })}
               label="Phone"
@@ -292,10 +299,10 @@ export const CustomersPage = () => {
               error={errors.phone?.message}
             />
             <FormInput
-              {...register('email', {
+              {...register("email", {
                 pattern: {
                   value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address',
+                  message: "Invalid email address",
                 },
               })}
               label="Email (Optional)"
@@ -304,7 +311,7 @@ export const CustomersPage = () => {
               error={errors.email?.message}
             />
             <FormInput
-              {...register('dateOfBirth')}
+              {...register("dateOfBirth")}
               label="Date of Birth (Optional)"
               type="date"
             />
@@ -313,7 +320,7 @@ export const CustomersPage = () => {
                 Address (Optional)
               </label>
               <textarea
-                {...register('address')}
+                {...register("address")}
                 rows={3}
                 className="w-full px-4 py-2.5 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                 placeholder="Enter customer address"
@@ -339,7 +346,7 @@ export const CustomersPage = () => {
               fullWidth
               loading={createMutation.isLoading || updateMutation.isLoading}
             >
-              {editingCustomer ? 'Update Customer' : 'Create Customer'}
+              {editingCustomer ? "Update Customer" : "Create Customer"}
             </Button>
           </div>
         </form>
@@ -360,19 +367,25 @@ export const CustomersPage = () => {
             <>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-[#141d2e] border border-[#1e2d45] rounded-lg p-4 text-center">
-                  <p className="text-xs text-slate-500 uppercase mb-1">Total Spent</p>
+                  <p className="text-xs text-slate-500 uppercase mb-1">
+                    Total Spent
+                  </p>
                   <p className="text-xl font-bold font-mono text-amber-400">
                     {formatCurrency(selectedCustomer.totalSpent || 0)}
                   </p>
                 </div>
                 <div className="bg-[#141d2e] border border-[#1e2d45] rounded-lg p-4 text-center">
-                  <p className="text-xs text-slate-500 uppercase mb-1">Loyalty Points</p>
+                  <p className="text-xs text-slate-500 uppercase mb-1">
+                    Loyalty Points
+                  </p>
                   <p className="text-xl font-bold font-mono text-indigo-400">
                     {selectedCustomer.loyaltyPoints || 0}
                   </p>
                 </div>
                 <div className="bg-[#141d2e] border border-[#1e2d45] rounded-lg p-4 text-center">
-                  <p className="text-xs text-slate-500 uppercase mb-1">Visits</p>
+                  <p className="text-xs text-slate-500 uppercase mb-1">
+                    Visits
+                  </p>
                   <p className="text-xl font-bold font-mono text-emerald-400">
                     {selectedCustomer.visitCount || 0}
                   </p>

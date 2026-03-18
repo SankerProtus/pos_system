@@ -1,63 +1,71 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { Topbar } from '../components/layout/Topbar';
-import { Button } from '../components/common/Button';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { Topbar } from "../components/layout/Topbar";
+import { Button } from "../components/common/Button";
 import { DataTable } from "../components/shared/DataTable";
-import { SearchInput } from '../components/shared/SearchInput';
-import { Select } from '../components/common/Select';
-import { Modal } from '../components/common/Modal';
-import { ConfirmDialog } from '../components/common/ConfirmDialog';
-import { Badge } from '../components/common/Badge';
-import { FormInput } from '../components/common/FormInput';
-import { apiClient } from '../api/axios';
-import { formatCurrency } from '../utils/formatCurrency';
-import { Plus, Edit, Trash2, Download } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { SearchInput } from "../components/shared/SearchInput";
+import { Select } from "../components/common/Select";
+import { Modal } from "../components/common/Modal";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
+import { Badge } from "../components/common/Badge";
+import { FormInput } from "../components/common/FormInput";
+import { apiClient } from "../api/axios";
+import { formatCurrency } from "../utils/formatCurrency";
+import { Plus, Edit, Trash2, Download } from "lucide-react";
+import toast from "react-hot-toast";
 
 export const ProductsPage = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState(null);
 
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm();
 
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products', { search: searchTerm, categoryId: selectedCategory }],
+    queryKey: [
+      "products",
+      { search: searchTerm, categoryId: selectedCategory },
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (selectedCategory) params.append('categoryId', selectedCategory);
+      if (searchTerm) params.append("search", searchTerm);
+      if (selectedCategory) params.append("categoryId", selectedCategory);
       const response = await apiClient.get(`/products?${params}`);
       return response.data;
     },
   });
 
   const { data: categories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: async () => {
-      const response = await apiClient.get('/categories');
+      const response = await apiClient.get("/categories");
       return response.data;
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await apiClient.post('/products', data);
+      const response = await apiClient.post("/products", data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['products']);
-      toast.success('Product created successfully');
+      queryClient.invalidateQueries(["products"]);
+      toast.success("Product created successfully");
       setIsFormModalOpen(false);
       reset();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to create product');
+      toast.error(error.response?.data?.message || "Failed to create product");
     },
   });
 
@@ -67,14 +75,14 @@ export const ProductsPage = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['products']);
-      toast.success('Product updated successfully');
+      queryClient.invalidateQueries(["products"]);
+      toast.success("Product updated successfully");
       setIsFormModalOpen(false);
       setEditingProduct(null);
       reset();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to update product');
+      toast.error(error.response?.data?.message || "Failed to update product");
     },
   });
 
@@ -83,13 +91,13 @@ export const ProductsPage = () => {
       await apiClient.delete(`/products/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['products']);
-      toast.success('Product deleted successfully');
+      queryClient.invalidateQueries(["products"]);
+      toast.success("Product deleted successfully");
       setIsDeleteDialogOpen(false);
       setDeletingProductId(null);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to delete product');
+      toast.error(error.response?.data?.message || "Failed to delete product");
     },
   });
 
@@ -111,10 +119,19 @@ export const ProductsPage = () => {
   };
 
   const onSubmit = (data) => {
+    const payload = {
+      ...data,
+      productName: data.name,
+      costPrice: data.cost,
+    };
+    delete payload.name;
+    delete payload.cost;
+    delete payload.initialQuantity;
+    delete payload.lowStockThreshold;
     if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct.id, data });
+      updateMutation.mutate({ id: editingProduct.id, data: payload });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload);
     }
   };
 
@@ -133,8 +150,8 @@ export const ProductsPage = () => {
 
   const columns = [
     {
-      key: 'name',
-      header: 'Product Name',
+      key: "name",
+      header: "Product Name",
       render: (row) => (
         <div>
           <p className="font-medium text-slate-100">{row.name}</p>
@@ -143,44 +160,52 @@ export const ProductsPage = () => {
       ),
     },
     {
-      key: 'sku',
-      header: 'SKU',
-      render: (row) => <span className="font-mono text-slate-300">{row.sku}</span>,
-    },
-    {
-      key: 'barcode',
-      header: 'Barcode',
-      render: (row) => <span className="font-mono text-slate-300">{row.barcode}</span>,
-    },
-    {
-      key: 'price',
-      header: 'Price',
+      key: "sku",
+      header: "SKU",
       render: (row) => (
-        <span className="font-mono text-amber-400">{formatCurrency(row.price)}</span>
+        <span className="font-mono text-slate-300">{row.sku}</span>
       ),
     },
     {
-      key: 'cost',
-      header: 'Cost',
+      key: "barcode",
+      header: "Barcode",
       render: (row) => (
-        <span className="font-mono text-slate-300">{formatCurrency(row.cost)}</span>
+        <span className="font-mono text-slate-300">{row.barcode}</span>
       ),
     },
     {
-      key: 'stock',
-      header: 'Stock',
+      key: "price",
+      header: "Price",
+      render: (row) => (
+        <span className="font-mono text-amber-400">
+          {formatCurrency(row.price)}
+        </span>
+      ),
+    },
+    {
+      key: "cost",
+      header: "Cost",
+      render: (row) => (
+        <span className="font-mono text-slate-300">
+          {formatCurrency(row.costPrice)}
+        </span>
+      ),
+    },
+    {
+      key: "stock",
+      header: "Stock",
       render: (row) => (
         <span className="font-mono">{row.inventory?.quantity || 0}</span>
       ),
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: "status",
+      header: "Status",
       render: (row) => getStockBadge(row),
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       render: (row) => (
         <div className="flex gap-2">
           <button
@@ -201,8 +226,9 @@ export const ProductsPage = () => {
   ];
 
   const categoryOptions = [
-    { value: '', label: 'All Categories' },
-    ...(categories?.map((cat) => ({ value: cat.id, label: cat.name })) || []),
+    { value: "", label: "All Categories" },
+    ...(categories?.data?.map((cat) => ({ value: cat.id, label: cat.name })) ||
+      []),
   ];
 
   return (
@@ -211,15 +237,19 @@ export const ProductsPage = () => {
         title="Product Management"
         subtitle="Manage your product catalog"
         actions={
-          <Button variant="primary" icon={<Plus size={18} />} onClick={handleOpenCreate}>
+          <Button
+            variant="primary"
+            icon={<Plus size={18} />}
+            onClick={handleOpenCreate}
+          >
             Add Product
           </Button>
         }
       />
       <main className="flex-1 overflow-y-auto bg-[#080e1a] p-6">
         {/* Toolbar */}
-        <div className="flex gap-3 mb-5">
-          <div className="flex-1">
+        <div className="flex gap-2 mb-5 items-center">
+          <div className="flex-1 min-w-70">
             <SearchInput
               onSearch={setSearchTerm}
               placeholder="Search products..."
@@ -229,9 +259,13 @@ export const ProductsPage = () => {
             options={categoryOptions}
             value={selectedCategory}
             onChange={setSelectedCategory}
-            className="w-48"
+            className="w-80"
           />
-          <Button variant="ghost" icon={<Download size={18} />}>
+          <Button
+            variant="ghost"
+            icon={<Download size={18} />}
+            className="w-70 gap-2"
+          >
             Export CSV
           </Button>
         </div>
@@ -253,42 +287,44 @@ export const ProductsPage = () => {
           setEditingProduct(null);
           reset();
         }}
-        title={editingProduct ? 'Edit Product' : 'Add New Product'}
+        title={editingProduct ? "Edit Product" : "Add New Product"}
         width={600}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="p-6">
           <div className="grid grid-cols-2 gap-4 mb-4">
             <FormInput
-              {...register('name', { required: 'Name is required' })}
+              {...register("name", { required: "Name is required" })}
               label="Product Name"
               placeholder="Enter product name"
               error={errors.name?.message}
             />
             <FormInput
-              {...register('sku', { required: 'SKU is required' })}
+              {...register("sku", { required: "SKU is required" })}
               label="SKU"
               placeholder="Enter SKU"
               error={errors.sku?.message}
             />
             <FormInput
-              {...register('barcode', { required: 'Barcode is required' })}
+              {...register("barcode", { required: "Barcode is required" })}
               label="Barcode"
               placeholder="Enter barcode"
               error={errors.barcode?.message}
             />
             <Select
-              {...register('categoryId', { required: 'Category is required' })}
+              {...register("categoryId", { required: "Category is required" })}
               label="Category"
-              options={categories?.map((cat) => ({
-                value: cat.id,
-                label: cat.name,
-              })) || []}
+              options={
+                categories?.data?.map((cat) => ({
+                  value: cat.id,
+                  label: cat.name,
+                })) || []
+              }
               error={errors.categoryId?.message}
             />
             <FormInput
-              {...register('price', {
-                required: 'Price is required',
-                min: { value: 0.01, message: 'Price must be positive' },
+              {...register("price", {
+                required: "Price is required",
+                min: { value: 0.01, message: "Price must be positive" },
               })}
               label="Selling Price"
               type="number"
@@ -297,9 +333,9 @@ export const ProductsPage = () => {
               error={errors.price?.message}
             />
             <FormInput
-              {...register('cost', {
-                required: 'Cost is required',
-                min: { value: 0, message: 'Cost cannot be negative' },
+              {...register("cost", {
+                required: "Cost is required",
+                min: { value: 0, message: "Cost cannot be negative" },
               })}
               label="Cost Price"
               type="number"
@@ -309,9 +345,9 @@ export const ProductsPage = () => {
             />
             {!editingProduct && (
               <FormInput
-                {...register('initialQuantity', {
-                  required: 'Initial quantity is required',
-                  min: { value: 0, message: 'Quantity cannot be negative' },
+                {...register("initialQuantity", {
+                  required: "Initial quantity is required",
+                  min: { value: 0, message: "Quantity cannot be negative" },
                 })}
                 label="Initial Quantity"
                 type="number"
@@ -320,9 +356,9 @@ export const ProductsPage = () => {
               />
             )}
             <FormInput
-              {...register('lowStockThreshold', {
-                required: 'Low stock threshold is required',
-                min: { value: 1, message: 'Threshold must be at least 1' },
+              {...register("lowStockThreshold", {
+                required: "Low stock threshold is required",
+                min: { value: 1, message: "Threshold must be at least 1" },
               })}
               label="Low Stock Alert At"
               type="number"
@@ -332,10 +368,10 @@ export const ProductsPage = () => {
           </div>
           <div className="mb-6">
             <FormInput
-              {...register('taxRate', {
-                required: 'Tax rate is required',
-                min: { value: 0, message: 'Tax rate cannot be negative' },
-                max: { value: 100, message: 'Tax rate cannot exceed 100%' },
+              {...register("taxRate", {
+                required: "Tax rate is required",
+                min: { value: 0, message: "Tax rate cannot be negative" },
+                max: { value: 100, message: "Tax rate cannot exceed 100%" },
               })}
               label="Tax Rate (%)"
               type="number"
@@ -363,7 +399,7 @@ export const ProductsPage = () => {
               fullWidth
               loading={createMutation.isLoading || updateMutation.isLoading}
             >
-              {editingProduct ? 'Update Product' : 'Create Product'}
+              {editingProduct ? "Update Product" : "Create Product"}
             </Button>
           </div>
         </form>

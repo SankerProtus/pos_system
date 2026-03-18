@@ -175,7 +175,7 @@ export const POSPage = () => {
             >
               All
             </button>
-            {categories?.map((cat) => (
+            {categories?.data?.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}

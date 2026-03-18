@@ -62,8 +62,7 @@ export const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     logger.error(
-      "Error in authenticateToken middleware:",
-      error.message || error,
+      "Error in authenticateToken middleware:", error,
     );
 
     if (error.name === "JsonWebTokenError") {

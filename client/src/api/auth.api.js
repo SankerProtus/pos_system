@@ -13,6 +13,16 @@ export const authApi = {
       throw error.response ? error.response.data : error;
     }
   },
+
+  // Add fetchProfile for refreshing user data
+  fetchProfile: async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.USERS.GET_PROFILE);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : error;
+    }
+  },
   login: async (formData) => {
     try {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, formData);

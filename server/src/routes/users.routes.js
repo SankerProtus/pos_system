@@ -22,7 +22,7 @@ router.get(
 );
 
 // Update user (admin and user themselves)
-router.put(
+router.patch(
   "/:id",
     requireAdminOrSelf("id"),
     usersController.updateUser,

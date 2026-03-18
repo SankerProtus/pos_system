@@ -73,7 +73,11 @@ export const SalesPage = () => {
   const runningTotal =
     sales?.data
       ?.filter((sale) => sale.status === "COMPLETED")
-      .reduce((sum, sale) => sum + sale.totalAmount, 0) || 0;
+      .reduce(
+        (sum, sale) =>
+          sum + Number(String(sale.totalAmount).replace(/[^0-9.-]+/g, "")),
+        0,
+      ) || 0;
 
   const statusOptions = [
     { value: "", label: "All Status" },
@@ -101,7 +105,9 @@ export const SalesPage = () => {
       key: "receiptNumber",
       header: "TXN ID",
       render: (row) => (
-        <span className="font-mono text-indigo-400">{row.receiptNumber}</span>
+        <span className="font-mono text-indigo-400">
+          {row.receipt?.receiptNumber || "N/A"}
+        </span>
       ),
     },
     {
@@ -114,7 +120,7 @@ export const SalesPage = () => {
     {
       key: "cashier",
       header: "Cashier",
-      render: (row) => row.cashier?.name || "N/A",
+      render: (row) => row.user?.name || "N/A",
     },
     {
       key: "customer",
@@ -125,7 +131,7 @@ export const SalesPage = () => {
       key: "items",
       header: "Items",
       render: (row) => (
-        <span className="font-mono">{row.items?.length || 0}</span>
+        <span className="font-mono">{row.saleItems?.length || 0}</span>
       ),
     },
     {
@@ -134,7 +140,7 @@ export const SalesPage = () => {
       render: (row) =>
         row.status !== "VOIDED" ? (
           <span className="font-mono text-amber-400">
-            {formatCurrency(row.totalAmount)}
+            {formatCurrency(row.totalAmount || 0)}
           </span>
         ) : (
           <span className="text-slate-500">—</span>
@@ -223,7 +229,7 @@ export const SalesPage = () => {
             </Button>
             <div className="ml-auto">
               <Badge variant="amber" className="text-lg px-4 py-2">
-                Total: {formatCurrency(runningTotal)}
+                Total: {formatCurrency(runningTotal || 0)}
               </Badge>
             </div>
           </div>
@@ -256,7 +262,7 @@ export const SalesPage = () => {
                 sale={selectedSale}
                 storeName="My POS Store"
                 storeTIN="C0000000000"
-                storeAddress="123 Main Street, Accra"
+                storeAddress="123 Main Street, Kumasi"
               />
               <div className="flex justify-around align-middle mt-6 gap-2 mx-auto">
                 <Button variant="ghost" onClick={handlePrint}>

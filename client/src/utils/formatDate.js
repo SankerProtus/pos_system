@@ -12,15 +12,16 @@ export const formatDate = {
   standard: (dateString) => {
     // dd/MM/yyyy HH:mm format
     const date = new Date(dateString);
-    const pad = (n) => n.toString().padStart(2, '0');
-
+    if (!dateString || isNaN(date.getTime())) return "N/A";
+    const pad = (n) => n.toString().padStart(2, "0");
     return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   },
 
   dateOnly: (dateString) => {
     // dd/MM/yyyy format
     const date = new Date(dateString);
-    const pad = (n) => n.toString().padStart(2, '0');
+    if (!dateString || isNaN(date.getTime())) return "N/A";
+    const pad = (n) => n.toString().padStart(2, "0");
 
     return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
   },
@@ -28,7 +29,8 @@ export const formatDate = {
   timeOnly: (dateString) => {
     // HH:mm format
     const date = new Date(dateString);
-    const pad = (n) => n.toString().padStart(2, '0');
+    if (!dateString || isNaN(date.getTime())) return "N/A";
+    const pad = (n) => n.toString().padStart(2, "0");
 
     return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   },
@@ -36,7 +38,8 @@ export const formatDate = {
   iso: (dateString) => {
     // yyyy-MM-dd format (for date inputs)
     const date = new Date(dateString);
-    const pad = (n) => n.toString().padStart(2, '0');
+    if (!dateString || isNaN(date.getTime())) return "N/A";
+    const pad = (n) => n.toString().padStart(2, "0");
 
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   },

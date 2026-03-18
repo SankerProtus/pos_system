@@ -9,8 +9,10 @@ export const registerSchema = z
     email: z.string().email("Please enter a valid email address"),
     password: z.string().min(6, "Password must be at least 6 characters long"),
     confirmPassword: z.string().min(6, "Confirm password is required"),
-    role: z.enum(["cashier", "manager", "admin"], {
-      errorMap: () => ({ message: "Please select a valid role" }),
+    role: z.enum(["CASHIER", "MANAGER", "ADMIN"], {
+      errorMap: () => ({
+        message: "Please select a valid role: Admin, Manager, or Cashier.",
+      }),
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {

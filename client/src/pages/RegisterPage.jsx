@@ -16,16 +16,16 @@ import {
 
 const ROLES = [
   {
-    value: "cashier",
+    value: "CASHIER",
     label: "Cashier",
     description: "Handle sales and transactions",
   },
   {
-    value: "manager",
+    value: "MANAGER",
     label: "Manager",
     description: "Manage inventory and staff",
   },
-  { value: "admin", label: "Admin", description: "Full system access" },
+  { value: "ADMIN", label: "Admin", description: "Full system access" },
 ];
 
 export const RegisterPage = () => {

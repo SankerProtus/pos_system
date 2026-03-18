@@ -1,6 +1,6 @@
-import { forwardRef } from 'react';
-import { formatCurrency } from '../../utils/formatCurrency';
-import { formatDate } from '../../utils/formatDate';
+import { forwardRef } from "react";
+import { formatCurrency } from "../../utils/formatCurrency";
+import { formatDate } from "../../utils/formatDate";
 
 export const Receipt = forwardRef(
   ({ sale, storeName, storeTIN, storeAddress }, ref) => {
@@ -8,7 +8,7 @@ export const Receipt = forwardRef(
       <div
         ref={ref}
         className="bg-white text-black font-mono p-8 max-w-[80mm] mx-auto"
-        style={{ fontFamily: 'JetBrains Mono, monospace' }}
+        style={{ fontFamily: "JetBrains Mono, monospace" }}
       >
         {/* Header */}
         <div className="text-center mb-4">
@@ -27,16 +27,16 @@ export const Receipt = forwardRef(
           </div>
           <div className="flex justify-between">
             <span>TXN:</span>
-            <span>{sale.receiptNumber}</span>
+            <span>{sale.receipt?.receiptNumber}</span>
           </div>
           <div className="flex justify-between">
             <span>Cashier:</span>
-            <span>{sale.cashier?.name}</span>
+            <span>{sale.user?.name}</span>
           </div>
           {sale.customer && (
             <div className="flex justify-between">
               <span>Customer:</span>
-              <span>{sale.customer.name}</span>
+              <span>{sale.customer?.name}</span>
             </div>
           )}
         </div>
@@ -101,21 +101,55 @@ export const Receipt = forwardRef(
         </div>
 
         {/* Barcode Placeholder */}
-        <div className="mt-4 flex justify-center">
-          <svg width="120" height="40">
-            <rect x="0" y="0" width="2" height="40" fill="black" />
-            <rect x="4" y="0" width="1" height="40" fill="black" />
-            <rect x="7" y="0" width="3" height="40" fill="black" />
-            <rect x="12" y="0" width="1" height="40" fill="black" />
-            <rect x="15" y="0" width="2" height="40" fill="black" />
-            <rect x="19" y="0" width="1" height="40" fill="black" />
-            <rect x="22" y="0" width="3" height="40" fill="black" />
-            <rect x="27" y="0" width="2" height="40" fill="black" />
+        <div className="mt-4 flex justify-center items-center w-full">
+          <svg
+            width="180"
+            height="60"
+            viewBox="0 0 180 60"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect width="180" height="60" fill="white" />
+
+            {/* Barcode bars */}
+            <g fill="black">
+              <rect x="10" width="4" height="40" />
+              <rect x="18" width="2" height="40" />
+              <rect x="24" width="6" height="40" />
+              <rect x="34" width="2" height="40" />
+              <rect x="40" width="4" height="40" />
+              <rect x="48" width="2" height="40" />
+              <rect x="54" width="8" height="40" />
+              <rect x="66" width="2" height="40" />
+              <rect x="72" width="4" height="40" />
+              <rect x="80" width="2" height="40" />
+              <rect x="86" width="6" height="40" />
+              <rect x="96" width="2" height="40" />
+              <rect x="102" width="8" height="40" />
+              <rect x="114" width="2" height="40" />
+              <rect x="120" width="4" height="40" />
+              <rect x="128" width="2" height="40" />
+              <rect x="134" width="6" height="40" />
+              <rect x="144" width="2" height="40" />
+              <rect x="150" width="8" height="40" />
+              <rect x="162" width="2" height="40" />
+              <rect x="168" width="4" height="40" />
+            </g>
+
+            {/* Human readable text */}
+            <text
+              x="90"
+              y="55"
+              text-anchor="middle"
+              font-family="monospace"
+              font-size="14"
+            >
+              1234567890
+            </text>
           </svg>
         </div>
       </div>
     );
-  }
+  },
 );
 
-Receipt.displayName = 'Receipt';
+Receipt.displayName = "Receipt";

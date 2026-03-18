@@ -9,22 +9,21 @@ datasource db {
 
 // ================  ENUMS  ================
 
-/// System roles — controls access to every protected route via RBAC middleware.
-/// Hierarchy : ADMIN (3) > MANAGER (2) > CASHIER (1)
+// System roles
 enum Role {
   ADMIN
   MANAGER
   CASHIER
 }
 
-/// All payment methods accepted at the POS terminal.
+// All payment methods accepted at the POS terminal.
 enum PaymentMethod {
   CASH
   MOBILE_MONEY
   CARD
 }
 
-/// Lifecycle of a sale transaction.
+// Lifecycle of a sale transaction.
 enum SaleStatus {
   PENDING    // Cart open, not yet confirmed
   COMPLETED  // Payment accepted, inventory deducted
@@ -32,7 +31,7 @@ enum SaleStatus {
   REFUNDED   // Post-completion reversal
 }
 
-/// Reason codes for manual inventory movements.
+// Reason codes for manual inventory movements.
 enum StockAdjustmentReason {
   PURCHASE       // New stock received from supplier
   DAMAGE         // Damaged / unsellable goods removed
@@ -42,10 +41,10 @@ enum StockAdjustmentReason {
   OPENING_STOCK  // Initial stock when product is created
 }
 
-/// Lifecycle of a discount voucher / coupon.
+// Lifecycle of a discount voucher / coupon.
 enum DiscountType {
-  PERCENTAGE   // e.g. 10 % off total
-  FIXED_AMOUNT // e.g. $5 off total
+  PERCENTAGE
+  FIXED_AMOUNT
   BUY_X_GET_Y  // Future: promotional rules
 }
 
@@ -57,10 +56,8 @@ enum RefundStatus {
   COMPLETED
 }
 
-// ================  USERS  (Authentication + Role-Based Access Control)  ================
+// =========  USERS   ===========
 
-/// System users — cashiers, managers, and administrators.
-/// Passwords are NEVER stored in plain text; always use bcrypt (cost ≥ 12).
 model User {
   id           String   @id @default(cuid())
   name         String   @db.VarChar(100)
@@ -68,7 +65,7 @@ model User {
   passwordHash String   @db.Text
   role         Role     @default(CASHIER)
   pin          String?  @db.VarChar(6)   // Optional 6-digit quick PIN for cashier screen
-  isActive     Boolean  @default(true)   // Soft-disable without deleting history
+  isActive     Boolean  @default(true)
   isVerified     Boolean   @default(false)
   lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
@@ -111,12 +108,12 @@ model PasswordReset {
   @@map("password_resets")
 }
 
-/// Persisted sessions allow server-side logout / token revocation.
-/// Store the JWT jti (ID) here; the auth middleware checks it is not revoked.
+// Persisted sessions allow server-side logout / token revocation.
+
 model UserSession {
   id        String   @id @default(cuid())
   userId    String
-  jti       String   @unique  
+  jti       String   @unique
   issuedAt  DateTime @default(now())
   expiresAt DateTime
   revokedAt DateTime?          // Set on logout
@@ -132,7 +129,8 @@ model UserSession {
 
 // ================  PRODUCTS  ================
 
-/// Product categories for filtering and reporting.
+// Product categories for filtering and reporting.
+
 model Category {
   id          String    @id @default(cuid())
   name        String    @unique @db.VarChar(80)
@@ -147,13 +145,12 @@ model Category {
   @@map("categories")
 }
 
-/// Master product catalogue.
-/// Every product gets an Inventory record (created automatically via service layer).
+
 model Product {
   id          String   @id @default(cuid())
   productName String   @db.VarChar(150)
   sku         String?  @unique @db.VarChar(50)  // Internal stock-keeping unit
-  barcode     String?  @unique @db.VarChar(50)  // EAN-13 / QR / custom barcode
+  barcode     String?  @unique @db.VarChar(50)
   categoryId  String
   description String?  @db.Text
   imageUrl    String?  @db.Text
@@ -184,8 +181,8 @@ model Product {
 
 //  ================  INVENTORY  ================
 
-/// Real-time stock levels — one record per product.
-/// Updated atomically inside prisma.$transaction when a sale is processed.
+// Real-time stock levels — one record per product.
+
 model Inventory {
   id            String    @id @default(cuid())
   productId     String    @unique
@@ -201,8 +198,8 @@ model Inventory {
   @@map("inventory")
 }
 
-/// Full audit trail of every stock movement (sales deductions + manual adjustments).
-/// Used for inventory reports and discrepancy investigation.
+/// Full audit trail of every stock movement.
+
 model StockAdjustment {
   id          String               @id @default(cuid())
   inventoryId String
@@ -226,9 +223,8 @@ model StockAdjustment {
   @@map("stock_adjustments")
 }
 
-//  ================  SUPPLIERS  ================
+//  ==========  SUPPLIERS  ============
 
-/// Supplier / vendor master — used for purchase orders and restocking.
 model Supplier {
   id           String    @id @default(cuid())
   name         String    @db.VarChar(100)
@@ -247,7 +243,6 @@ model Supplier {
   @@map("suppliers")
 }
 
-/// Junction table — a product can have multiple suppliers with different costs.
 model SupplierProduct {
   id         String  @id @default(cuid())
   supplierId String
@@ -301,7 +296,7 @@ model PurchaseOrderItem {
 // ================  CUSTOMERS  ================
 
 /// Registered customer profiles with loyalty point tracking.
-/// Walk-in customers are represented by null customerId on a Sale.
+
 model Customer {
   id            String   @id @default(cuid())
   name          String   @db.VarChar(100)

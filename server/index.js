@@ -6,6 +6,11 @@ import cookieParser from 'cookie-parser';
 import { authRoutes } from "./src/routes/auth.routes.js";
 import { salesRoutes } from "./src/routes/sales.routes.js";
 import { usersRouter } from './src/routes/users.routes.js';
+import { customersRouter } from './src/routes/customers.routes.js';
+import { productsRouter } from './src/routes/products.routes.js';
+import { categoriesRouter } from "./src/routes/categories.routes.js";
+import { inventoryRouter } from "./src/routes/inventory.routes.js";
+import { posRouter } from "./src/routes/pos.routes.js";
 import passport from "./src/config/PassportConfig.js";
 
 dotenv.config();
@@ -47,6 +52,11 @@ app.get("/health-check", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/users", usersRouter);
+app.use("/api/customers", customersRouter);
+app.use("/api/products", productsRouter);
+app.use("/api/categories", categoriesRouter);
+app.use("/api/inventory", inventoryRouter);
+app.use("/api/pos", posRouter);
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server is running on port http://localhost:${process.env.PORT || 5000}`);

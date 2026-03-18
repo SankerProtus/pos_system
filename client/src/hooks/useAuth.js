@@ -20,6 +20,7 @@ export const useAuth = () => {
         name: formData.fullName,
         email: formData.email,
         password: formData.password,
+        role: formData.role,
       };
 
       const data = await authApi.signup(payload);
@@ -114,7 +115,6 @@ export const useAuth = () => {
       const errorMessage =
         err.error || err.message || TOAST_MESSAGES.ERROR.VERIFICATION_FAILED;
       setError(errorMessage);
-      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -189,5 +189,6 @@ export const useAuth = () => {
     resendVerification,
     forgotPassword,
     resetPassword,
+    refreshUser: auth.refreshUser,
   };
 };

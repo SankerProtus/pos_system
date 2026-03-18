@@ -124,7 +124,7 @@ export const LoginPage = () => {
           <p className="text-slate-600">
             Don't have an account?{" "}
             <Link
-              to="/register"
+              to="/signup"
               className="text-blue-600 hover:text-blue-700 font-semibold transition"
             >
               Create Account

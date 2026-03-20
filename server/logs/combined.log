@@ -39,3 +39,168 @@
 {"level":"info","message":"✅ Email transporter is ready to send messages"}
 {"level":"info","message":"User cmmw5ageg0000jbk8q6nv5ll8 updating user cmmw5ageg0000jbk8q6nv5ll8: {\"name\":\"Thea Queen\",\"email\":\"chatterlyteam@gmail.com\",\"role\":\"CASHIER\",\"pin\":\"456776\"}"}
 {"level":"info","message":"User cmmw5ageg0000jbk8q6nv5ll8 updating user cmmw5ageg0000jbk8q6nv5ll8: {\"name\":\"Thea Queen\",\"email\":\"chatterlyteam@gmail.com\",\"pin\":\"456776\"}"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Error creating user:"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"clientVersion":"6.19.2","level":"error","message":"Error creating user: \nInvalid `prisma.user.create()` invocation:\n\n{\n  data: {\n    name: \"John Diggle\",\n    email: \"john@gmail.com\",\n    password: \"Diggle\",\n    role: \"MANAGER\",\n    pin: \"\",\n+   passwordHash: String\n  },\n  select: {\n    id: true,\n    name: true,\n    email: true,\n    role: true,\n    pin: true,\n    isActive: true\n  }\n}\n\nArgument `passwordHash` is missing.","name":"PrismaClientValidationError","stack":"PrismaClientValidationError: \nInvalid `prisma.user.create()` invocation:\n\n{\n  data: {\n    name: \"John Diggle\",\n    email: \"john@gmail.com\",\n    password: \"Diggle\",\n    role: \"MANAGER\",\n    pin: \"\",\n+   passwordHash: String\n  },\n  select: {\n    id: true,\n    name: true,\n    email: true,\n    role: true,\n    pin: true,\n    isActive: true\n  }\n}\n\nArgument `passwordHash` is missing.\n    at Nn (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\@prisma\\client\\runtime\\library.js:29:1363)\n    at ei.handleRequestError (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\@prisma\\client\\runtime\\library.js:121:6911)\n    at ei.handleAndLogRequestError (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\@prisma\\client\\runtime\\library.js:121:6593)\n    at ei.request (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\@prisma\\client\\runtime\\library.js:121:6300)\n    at async a (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\@prisma\\client\\runtime\\library.js:130:9551)\n    at async Object.createUser (file:///C:/Users/previ/Downloads/POS%20System/server/src/repositories/users.repository.js:40:16)\n    at async Object.createUser (file:///C:/Users/previ/Downloads/POS%20System/server/src/services/users.services.js:33:16)\n    at async createUser (file:///C:/Users/previ/Downloads/POS%20System/server/src/controllers/users.controller.js:81:23)"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"expiredAt":"2026-03-18T15:48:57.000Z","level":"error","message":"Error in authenticateToken middleware: jwt expired","name":"TokenExpiredError","stack":"TokenExpiredError: jwt expired\n    at C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\jsonwebtoken\\verify.js:190:21\n    at getSecret (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\jsonwebtoken\\verify.js:97:14)\n    at module.exports [as verify] (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\jsonwebtoken\\verify.js:101:10)\n    at authenticateToken (file:///C:/Users/previ/Downloads/POS%20System/server/src/middlewares/auth.middleware.js:19:25)\n    at Layer.handleRequest (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\router\\lib\\layer.js:152:17)\n    at trimPrefix (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\router\\index.js:342:13)\n    at C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\router\\index.js:297:9\n    at processParams (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\router\\index.js:582:12)\n    at next (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\router\\index.js:291:5)\n    at Function.handle (C:\\Users\\previ\\Downloads\\POS System\\server\\node_modules\\router\\index.js:186:3)"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","level":"error","message":"❌ Error setting up email transporter: getaddrinfo ENOTFOUND smtp.gmail.com","stack":"Error: getaddrinfo ENOTFOUND smtp.gmail.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)","syscall":"getaddrinfo"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Error updating product: Name, price, category, and description are required"}
+{"level":"error","message":"Error updating product: Name, price, category, and description are required"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Error updating product: Product name, price, category, and description are required"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Error updating product: Product name, price, category, and description are required"}
+{"level":"error","message":"Error updating product: Product name, price, category, and description are required"}
+{"level":"error","message":"Error updating product: \nInvalid `prisma.product.update()` invocation:\n\n{\n  where: {\n    id: \"cmmw856n70001jbhcsffoqluk\"\n  },\n  data: {\n    id: \"cmmw856n70001jbhcsffoqluk\",\n    productName: \"Bakery\",\n    sku: \"WC-1001\",\n    barcode: \"2345321110076\",\n    description: \"Bakery\",\n    imageUrl: null,\n    price: \"112.99\",\n    costPrice: \"100\",\n    taxRate: \"5\",\n    category: {\n      id: \"cmmw800aq0003jb6g0e78vmiu\",\n      ~~\n      name: \"Bakery\",\n      description: \"Bread, cakes, and pastries\",\n      isActive: true,\n      createdAt: \"2026-03-18T15:52:56.451Z\",\n      updatedAt: \"2026-03-18T15:52:56.451Z\",\n?     create?: CategoryCreateWithoutProductsInput | CategoryUncheckedCreateWithoutProductsInput,\n?     connectOrCreate?: CategoryCreateOrConnectWithoutProductsInput,\n?     upsert?: CategoryUpsertWithoutProductsInput,\n?     connect?: CategoryWhereUniqueInput,\n?     update?: CategoryUpdateToOneWithWhereWithoutProductsInput | CategoryUpdateWithoutProductsInput | CategoryUncheckedUpdateWithoutProductsInput\n    },\n    inventory: {\n      quantity: 10,\n      lowStockLevel: 10,\n      reorderPoint: 20\n    },\n    saleItems: [],\n    stockAdjustments: [],\n    supplierProducts: [],\n    createdAt: \"2026-03-18T15:56:57.947Z\",\n    updatedAt: \"2026-03-18T15:56:57.947Z\",\n    categoryId: \"cmmw800aq0000jb6gcy7lxvzp\",\n    lowStockThreshold: \"5\"\n  }\n}\n\nUnknown argument `id`. Available options are marked with ?."}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","level":"error","message":"❌ Error setting up email transporter: getaddrinfo ENOTFOUND smtp.gmail.com","stack":"Error: getaddrinfo ENOTFOUND smtp.gmail.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)","syscall":"getaddrinfo"}
+{"code":"EDNS","command":"CONN","errno":-3008,"hostname":"smtp.gmail.com","level":"error","message":"❌ Error setting up email transporter: getaddrinfo ENOTFOUND smtp.gmail.com","stack":"Error: getaddrinfo ENOTFOUND smtp.gmail.com\n    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)","syscall":"getaddrinfo"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"info","message":"User cmmy2kf0i0000jb1k7w0e0fyd updating user cmmy24zb30007jbp896wk3m71: {\"name\":\"Charlie Cashier\",\"email\":\"charlie.cashier@pos.com\",\"role\":\"CASHIER\",\"pin\":null}"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"error","message":"Login error:"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"info","message":"✅ Email transporter is ready to send messages"}
+{"level":"error","message":"Login error:"}

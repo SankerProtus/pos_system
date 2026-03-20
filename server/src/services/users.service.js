@@ -29,6 +29,10 @@ export const usersService = {
         return await usersRepository.updatePassword(id, { password: newPassword });
     },
 
+    createUser: async (userData) => {
+        return await usersRepository.createUser(userData);
+    },
+
     deleteUser: async (id) => {
         const deleteUser = await usersRepository.findUserById(id);
 

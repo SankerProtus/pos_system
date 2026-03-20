@@ -28,6 +28,13 @@ export const authApi = {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, formData);
       return response.data;
     } catch (error) {
+      // Pass through retryAfter if present
+      if (error.response && error.response.status === 429) {
+        throw {
+          message: error.response.data.message,
+          retryAfter: error.response.data.retryAfter,
+        };
+      }
       throw error.response ? error.response.data : error;
     }
   },

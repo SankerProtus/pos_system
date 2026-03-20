@@ -11,6 +11,7 @@ export const usersRepository = {
                     role: true,
                     pin: true,
                     isActive: true,
+                    lastLoginAt: true,
                 }
         });
     },
@@ -25,6 +26,7 @@ export const usersRepository = {
                 role: true,
                 pin: true,
                 isActive: true,
+                lastLoginAt: true,
             }
         });
     },
@@ -33,6 +35,22 @@ export const usersRepository = {
         return await prisma.user.update({
             where: { id },
             data
+        });
+    },
+
+    createUser: async (userData) => {
+        return await prisma.user.create({
+            data: userData,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                pin: true,
+                isActive: true,
+                lastLoginAt: true,
+
+            }
         });
     },
 

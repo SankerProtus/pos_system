@@ -22,6 +22,10 @@ export const ProductsPage = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState(null);
+  // Image zoom modal state
+  const [zoomImageUrl, setZoomImageUrl] = useState(null);
+  const handleImageClick = (url) => setZoomImageUrl(url);
+  const handleCloseZoom = () => setZoomImageUrl(null);
 
   const queryClient = useQueryClient();
   const {
@@ -109,7 +113,18 @@ export const ProductsPage = () => {
 
   const handleOpenEdit = (product) => {
     setEditingProduct(product);
-    reset(product);
+    reset({
+      ...product,
+      name: product.productName,
+      cost: product.costPrice,
+      price: product.price,
+      taxRate: product.taxRate,
+      sku: product.sku,
+      barcode: product.barcode,
+      categoryId: product.categoryId || product.category?.id,
+      description: product.description,
+      lowStockThreshold: product.inventory?.lowStockLevel,
+    });
     setIsFormModalOpen(true);
   };
 
@@ -120,14 +135,15 @@ export const ProductsPage = () => {
 
   const onSubmit = (data) => {
     const payload = {
-      ...data,
       productName: data.name,
+      sku: data.sku,
+      barcode: data.barcode,
+      description: data.description,
+      price: data.price,
       costPrice: data.cost,
+      taxRate: data.taxRate,
+      categoryId: data.categoryId,
     };
-    delete payload.name;
-    delete payload.cost;
-    delete payload.initialQuantity;
-    delete payload.lowStockThreshold;
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, data: payload });
     } else {
@@ -150,11 +166,43 @@ export const ProductsPage = () => {
 
   const columns = [
     {
-      key: "name",
+      key: "image",
+      header: "Image",
+      render: (row) => (
+        <button
+          style={{
+            padding: 0,
+            border: "none",
+            background: "none",
+            cursor: "pointer",
+          }}
+          onClick={() => handleImageClick(row.imageUrl || "/no-image.jpg")}
+          aria-label="View product image"
+        >
+          <img
+            src={row.imageUrl || "/no-image.jpg"}
+            alt={row.productName}
+            style={{
+              width: 40,
+              height: 40,
+              objectFit: "cover",
+              borderRadius: 6,
+              background: "#222",
+            }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = "/no-image.png";
+            }}
+          />
+        </button>
+      ),
+    },
+    {
+      key: "productName",
       header: "Product Name",
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-100">{row.name}</p>
+          <p className="font-medium text-slate-100">{row.productName}</p>
           <p className="text-xs text-slate-500">{row.category?.name}</p>
         </div>
       ),
@@ -233,6 +281,36 @@ export const ProductsPage = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Image Zoom Modal */}
+      {zoomImageUrl && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={handleCloseZoom}
+        >
+          <img
+            src={zoomImageUrl}
+            alt="Product"
+            style={{
+              maxWidth: "80vw",
+              maxHeight: "80vh",
+              borderRadius: 12,
+              boxShadow: "0 4px 32px #000",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
       <Topbar
         title="Product Management"
         subtitle="Manage your product catalog"
@@ -364,6 +442,14 @@ export const ProductsPage = () => {
               type="number"
               placeholder="10"
               error={errors.lowStockThreshold?.message}
+            />
+            <FormInput
+              {...register("description", {
+                required: "Description is required",
+              })}
+              label="Description"
+              placeholder="Enter product description"
+              error={errors.description?.message}
             />
           </div>
           <div className="mb-6">

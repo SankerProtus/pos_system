@@ -1,4 +1,4 @@
-import { customersService } from "../services/customersServices.js";
+import { customersService } from "../services/customers.service.js";
 import { logger } from "../utils/logger.js";
 
 export const customersController = {

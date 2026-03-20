@@ -1,4 +1,4 @@
-import { productsService } from "../services/productsService.js";
+import { productsService } from "../services/products.service.js";
 import { logger } from "../utils/logger.js";
 
 export const productsController = {

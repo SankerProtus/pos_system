@@ -6,7 +6,11 @@ export const salesService = {
       const limit = data?.limit;
       const status = data?.status;
       const sales = await salesRepository.getAllSales({ limit, status });
-      return sales;
+      // Map paymentMethod from payment relation
+      return sales.map((sale) => ({
+        ...sale,
+        paymentMethod: sale.payment?.method || null,
+      }));
     } catch (error) {
       console.error("Error fetching sales:", error);
       throw new Error("Internal server error", { cause: error });

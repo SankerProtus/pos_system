@@ -1,4 +1,4 @@
-import { usersService } from "../services/users.services.js";
+import { usersService } from "../services/users.service.js";
 import { logger } from "../utils/logger.js";
 
 export const usersController = {
@@ -21,6 +21,17 @@ export const usersController = {
     } catch (error) {
       logger.error("Error fetching user:", error.message || error);
       res.status(500).json({ error: "Failed to fetch user" });
+    }
+  },
+
+  getProfile: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await usersService.getUserById(userId);
+      res.json(user);
+    } catch (error) {
+      logger.error("Error fetching user profile:", error.message || error);
+      res.status(500).json({ error: "Failed to fetch user profile" });
     }
   },
 
@@ -61,6 +72,22 @@ export const usersController = {
     } catch (error) {
       logger.error("Error updating user:", error.message || error);
       res.status(500).json({ error: "Failed to update user" });
+    }
+  },
+
+  createUser: async (req, res) => {
+    try {
+      const { password, ...userData } = req.body;
+      if (!password) {
+        return res.status(400).json({ error: "Password is required" });
+      }
+      const bcrypt = await import('bcrypt');
+      const passwordHash = await bcrypt.default.hash(password, 10);
+      const newUser = await usersService.createUser({ ...userData, passwordHash });
+      res.status(201).json(newUser);
+    } catch (error) {
+      logger.error("Error creating user:", error);
+      res.status(500).json({ error: "Failed to create user" });
     }
   },
 

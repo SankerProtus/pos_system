@@ -5,13 +5,13 @@ import { requireAdminOrSelf } from "../middlewares/auth.middleware.js";
 import { usersController } from "../controllers/users.controller.js";
 
 const router = express.Router();
+router.use(authenticateToken);
+
 // Get authenticated user's profile
 router.get(
   "/profile",
-  (req, res, next) => next(), // authenticateToken already applied globally
   usersController.getProfile,
 );
-router.use(authenticateToken);
 
 // Get all users (admin only)
 router.get(
@@ -32,6 +32,13 @@ router.patch(
   "/:id",
     requireAdminOrSelf("id"),
     usersController.updateUser,
+);
+
+// Add a new user (admin only)
+router.post(
+  "/",
+    requireRole("ADMIN"),
+    usersController.createUser,
 );
 
 // Delete user (admin only)

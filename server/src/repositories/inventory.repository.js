@@ -26,6 +26,12 @@ export const inventoryRepository = {
             },
           },
         },
+        stockAdjustments: {
+          where: { reason: "PURCHASE" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
       },
     });
   },

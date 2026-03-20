@@ -1,25 +1,25 @@
-import { useState, useRef, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Topbar } from '../components/layout/Topbar';
-import { Modal } from '../components/common/Modal';
-import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
-import { useCartStore } from '../store/cartStore';
-import { apiClient } from '../api/axios';
-import { formatCurrency } from '../utils/formatCurrency';
-import { Search, Minus, Plus, X, Trash2 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { Receipt } from '../components/shared/Receipt';
-import { useReactToPrint } from 'react-to-print';
+import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Topbar } from "../components/layout/Topbar";
+import { Modal } from "../components/common/Modal";
+import { Button } from "../components/common/Button";
+import { Badge } from "../components/common/Badge";
+import { useCartStore } from "../store/cartStore";
+import { apiClient } from "../api/axios";
+import { formatCurrency } from "../utils/formatCurrency";
+import { Search, Minus, Plus, X, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
+import { Receipt } from "../components/shared/Receipt";
+import { useReactToPrint } from "react-to-print";
 
 export const POSPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [barcode, setBarcode] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
-  const [amountPaid, setAmountPaid] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [amountPaid, setAmountPaid] = useState("");
   const [discount, setDiscount] = useState(0);
   const [completedSale, setCompletedSale] = useState(null);
   const barcodeInputRef = useRef(null);
@@ -44,19 +44,22 @@ export const POSPage = () => {
   }, []);
 
   const { data: categories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: async () => {
-      const response = await apiClient.get('/categories');
+      const response = await apiClient.get("/categories");
       return response.data;
     },
   });
 
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products', { categoryId: selectedCategory, search: searchTerm }],
+    queryKey: [
+      "products",
+      { categoryId: selectedCategory, search: searchTerm },
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedCategory) params.append('categoryId', selectedCategory);
-      if (searchTerm) params.append('search', searchTerm);
+      if (selectedCategory) params.append("categoryId", selectedCategory);
+      if (searchTerm) params.append("search", searchTerm);
       const response = await apiClient.get(`/products?${params}`);
       return response.data;
     },
@@ -64,31 +67,31 @@ export const POSPage = () => {
 
   const createSaleMutation = useMutation({
     mutationFn: async (saleData) => {
-      const response = await apiClient.post('/sales', saleData);
+      const response = await apiClient.post("/sales", saleData);
       return response.data;
     },
     onSuccess: (data) => {
       setCompletedSale(data);
       setIsPaymentModalOpen(false);
       setIsReceiptModalOpen(true);
-      queryClient.invalidateQueries(['dashboard-daily']);
-      queryClient.invalidateQueries(['dashboard-sales']);
-      toast.success('Sale completed successfully!');
+      queryClient.invalidateQueries(["dashboard-daily"]);
+      queryClient.invalidateQueries(["dashboard-sales"]);
+      toast.success("Sale completed successfully!");
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to complete sale');
+      toast.error(error.response?.data?.message || "Failed to complete sale");
     },
   });
 
   const handleBarcodeSearch = async (e) => {
-    if (e.key === 'Enter' && barcode.trim()) {
+    if (e.key === "Enter" && barcode.trim()) {
       try {
         const response = await apiClient.get(`/products/barcode/${barcode}`);
         addItem(response.data);
-        setBarcode('');
-        toast.success('Product added to cart');
+        setBarcode("");
+        toast.success("Product added to cart");
       } catch (error) {
-        toast.error('Product not found');
+        toast.error("Product not found");
       }
     }
   };
@@ -100,11 +103,11 @@ export const POSPage = () => {
   };
 
   const handleConfirmPayment = () => {
-    const total = grandTotal(discount);
-    const paid = parseFloat(amountPaid) || 0;
+    const total = Math.round(grandTotal(discount) * 100) / 100;
+    const paid = Math.round(parseFloat(amountPaid) * 100) / 100;
 
     if (paid < total) {
-      toast.error('Amount paid is less than total');
+      toast.error("Amount paid is less than total");
       return;
     }
 
@@ -134,8 +137,8 @@ export const POSPage = () => {
     setIsReceiptModalOpen(false);
     setCompletedSale(null);
     setDiscount(0);
-    setAmountPaid('');
-    setPaymentMethod('CASH');
+    setAmountPaid("");
+    setPaymentMethod("CASH");
     barcodeInputRef.current?.focus();
   };
 
@@ -150,7 +153,10 @@ export const POSPage = () => {
           {/* Barcode Scanner */}
           <div className="mb-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={20} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500"
+                size={20}
+              />
               <input
                 ref={barcodeInputRef}
                 type="text"
@@ -169,8 +175,8 @@ export const POSPage = () => {
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                 selectedCategory === null
-                  ? 'bg-indigo-500 text-white'
-                  : 'bg-[#141d2e] text-slate-300 hover:bg-indigo-900/20'
+                  ? "bg-indigo-500 text-white"
+                  : "bg-[#141d2e] text-slate-300 hover:bg-indigo-900/20"
               }`}
             >
               All
@@ -181,8 +187,8 @@ export const POSPage = () => {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                   selectedCategory === cat.id
-                    ? 'bg-indigo-500 text-white'
-                    : 'bg-[#141d2e] text-slate-300 hover:bg-indigo-900/20'
+                    ? "bg-indigo-500 text-white"
+                    : "bg-[#141d2e] text-slate-300 hover:bg-indigo-900/20"
                 }`}
               >
                 {cat.name}
@@ -209,9 +215,7 @@ export const POSPage = () => {
                     {formatCurrency(product.price)}
                   </p>
                   <Badge
-                    variant={
-                      product.inventory?.quantity > 10 ? 'green' : 'red'
-                    }
+                    variant={product.inventory?.quantity > 10 ? "green" : "red"}
                   >
                     Stock: {product.inventory?.quantity || 0}
                   </Badge>
@@ -226,7 +230,9 @@ export const POSPage = () => {
           {/* Header */}
           <div className="p-4 border-b border-[#1e2d45]">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-100">Order Cart</h3>
+              <h3 className="text-lg font-semibold text-slate-100">
+                Order Cart
+              </h3>
               <Badge variant="amber">{itemCount()}</Badge>
             </div>
           </div>
@@ -260,7 +266,9 @@ export const POSPage = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => updateQty(item.productId, item.quantity - 1)}
+                        onClick={() =>
+                          updateQty(item.productId, item.quantity - 1)
+                        }
                         className="w-7 h-7 rounded bg-[#0f172a] border border-[#1e2d45] flex items-center justify-center text-slate-300 hover:bg-indigo-900/20"
                       >
                         <Minus size={14} />
@@ -269,7 +277,9 @@ export const POSPage = () => {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => updateQty(item.productId, item.quantity + 1)}
+                        onClick={() =>
+                          updateQty(item.productId, item.quantity + 1)
+                        }
                         className="w-7 h-7 rounded bg-[#0f172a] border border-[#1e2d45] flex items-center justify-center text-slate-300 hover:bg-indigo-900/20"
                       >
                         <Plus size={14} />
@@ -309,7 +319,9 @@ export const POSPage = () => {
             </div>
             <div className="border-t border-[#1e2d45] pt-2">
               <div className="flex justify-between">
-                <span className="text-lg font-semibold text-slate-100">TOTAL</span>
+                <span className="text-lg font-semibold text-slate-100">
+                  TOTAL
+                </span>
                 <span className="text-xl font-bold font-mono text-amber-400">
                   {formatCurrency(grandTotal(discount))}
                 </span>
@@ -358,17 +370,17 @@ export const POSPage = () => {
               Payment Method
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {['CASH', 'MOBILE_MONEY', 'CARD'].map((method) => (
+              {["CASH", "MOBILE_MONEY", "CARD"].map((method) => (
                 <button
                   key={method}
                   onClick={() => setPaymentMethod(method)}
                   className={`px-4 py-3 rounded-lg text-sm font-medium transition ${
                     paymentMethod === method
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-[#0f172a] text-slate-300 hover:bg-indigo-900/20'
+                      ? "bg-indigo-500 text-white"
+                      : "bg-[#0f172a] text-slate-300 hover:bg-indigo-900/20"
                   }`}
                 >
-                  {method.replace('_', ' ')}
+                  {method.replace("_", " ")}
                 </button>
               ))}
             </div>

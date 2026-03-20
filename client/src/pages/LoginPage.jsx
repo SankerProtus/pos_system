@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../hooks/useAuth";
 import { loginSchema } from "../schemas/authSchema.js";
@@ -14,37 +14,86 @@ import {
 } from "../components/common";
 
 export const LoginPage = () => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema),
   });
-
   const { login, loading, error } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
+  const LOGIN_RATE_LIMIT_KEY = "loginRateLimitCountdown";
+  const [countdown, setCountdown] = useState(() => {
+    const saved = localStorage.getItem(LOGIN_RATE_LIMIT_KEY);
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Persist countdown in localStorage
+  useEffect(() => {
+    if (countdown > 0) {
+      localStorage.setItem(LOGIN_RATE_LIMIT_KEY, countdown);
+    } else {
+      localStorage.removeItem(LOGIN_RATE_LIMIT_KEY);
+    }
+  }, [countdown]);
+
+  // Countdown timer logic
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown((prev) => {
+          const next = prev - 1;
+          if (next <= 0) localStorage.removeItem(LOGIN_RATE_LIMIT_KEY);
+          else localStorage.setItem(LOGIN_RATE_LIMIT_KEY, next);
+          return next;
+        });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  // Prevent multiple timers
+  useEffect(() => {
+    return () => localStorage.removeItem(LOGIN_RATE_LIMIT_KEY);
+  }, []);
 
   const onSubmit = async (data) => {
-    await login({ ...data, rememberMe });
+    if (countdown > 0) return;
+    try {
+      await login({ ...data, rememberMe });
+    } catch (err) {
+      if (err && err.retryAfter) {
+        setCountdown(err.retryAfter);
+      }
+    }
+  };
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to backend Passport OAuth endpoint
     const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
     window.location.href = `${apiUrl}/auth/google`;
   };
 
   return (
-    <AuthLayout
-      title="Welcome Back"
-      subtitle="Sign in to access your POS system"
-    >
+    <AuthLayout title="Welcome Back" subtitle="Sign in to access your POS system">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {/* Error Alert */}
-        {error && <Alert type="error" message={error} />}
-
+        {/* Countdown Alert for rate limit */}
+        {countdown > 0 && (
+          <Alert
+            type="error"
+            message={`Too many login attempts. Try again in ${formatTime(countdown)}`}
+          />
+        )}
+        {/* Error Alert for other errors */}
+        {error && !error.retryAfter && (
+          <Alert
+            type="error"
+            message={typeof error === "string" ? error : error.message}
+          />
+        )}
         {/* Email Field */}
         <FormInput
           {...register("email")}
@@ -54,9 +103,8 @@ export const LoginPage = () => {
           placeholder="your.email@store.com"
           icon={Mail}
           error={errors.email?.message}
-          disabled={loading}
+          disabled={loading || countdown > 0}
         />
-
         {/* Password Field */}
         <FormInput
           {...register("password")}
@@ -65,12 +113,11 @@ export const LoginPage = () => {
           placeholder="Enter your password"
           icon={Lock}
           error={errors.password?.message}
-          disabled={loading}
+          disabled={loading || countdown > 0}
           showPasswordToggle
           showPassword={showPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
         />
-
         {/* Remember Me & Forgot Password */}
         <div className="flex items-center justify-between text-sm">
           <label className="flex items-center gap-2 cursor-pointer group">
@@ -91,7 +138,6 @@ export const LoginPage = () => {
             Forgot password?
           </Link>
         </div>
-
         {/* Submit Button */}
         <Button
           type="submit"
@@ -100,10 +146,10 @@ export const LoginPage = () => {
           fullWidth
           loading={loading}
           icon={LogIn}
+          disabled={loading || countdown > 0}
         >
-          {loading ? "Signing in..." : "Sign In"}
+          {countdown > 0 ? `Try again in ${formatTime(countdown)}` : loading ? "Signing in..." : "Sign In"}
         </Button>
-
         {/* Divider */}
         <div className="relative py-3">
           <div className="absolute inset-0 flex items-center">
@@ -115,10 +161,8 @@ export const LoginPage = () => {
             </span>
           </div>
         </div>
-
         {/* Google Login */}
         <GoogleOAuthButton onClick={handleGoogleLogin} />
-
         {/* Register Link */}
         <div className="pt-4 text-center border-t border-slate-200">
           <p className="text-slate-600">

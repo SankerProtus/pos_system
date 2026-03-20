@@ -132,14 +132,14 @@ export const DashboardPage = () => {
       header: "TXN ID",
       render: (row) => (
         <span className="font-mono text-indigo-400">
-          {row?.receiptNumber || "N/A"}
+          {row?.receipt?.receiptNumber || "N/A"}
         </span>
       ),
     },
     {
       key: "cashier",
       header: "Cashier",
-      render: (row) => row?.cashier?.name || "N/A",
+      render: (row) => row?.user?.name || "N/A",
     },
     {
       key: "totalAmount",

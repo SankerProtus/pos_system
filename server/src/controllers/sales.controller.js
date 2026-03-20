@@ -1,4 +1,4 @@
-import { salesService } from "../services/sales.services.js";
+import { salesService } from "../services/sales.service.js";
 
 export const salesController = {
     getSales: async (req, res) => {

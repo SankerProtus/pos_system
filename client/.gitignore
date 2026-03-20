@@ -7,15 +7,25 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependency directories
+node_modules/
+dist/
+build/
+dist-ssr/
+coverage/
+.next/
+.turbo/
+.parcel-cache/
+.cache/
+
+# Local environment
+.env
+.env.*
 
 # Editor directories and files
-.vscode/*
+.vscode/
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,5 +33,19 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
-.env
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Misc
+*.local
+*.pid
+*.seed
+*.bak
+*.tmp
+*.log
+*.test.js
+*.test.ts
+*.test.jsx
+*.test.tsx

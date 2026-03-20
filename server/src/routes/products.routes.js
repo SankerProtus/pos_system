@@ -3,7 +3,6 @@ import { productsController } from "../controllers/products.controller.js";
 
 const router = express.Router();
 
-
 // Barcode lookup
 router.get("/barcode/:barcode", productsController.getProductByBarcode);
 

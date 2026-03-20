@@ -68,6 +68,20 @@ export const reportRepository = {
           quantity: { lt: 10 },
         },
       });
+      // Hourly sales (8:00–21:00)
+      const hourlySales = [];
+      for (let hour = 8; hour <= 21; hour++) {
+        const hourStart = new Date(start);
+        hourStart.setHours(hour, 0, 0, 0);
+        const hourEnd = new Date(hourStart);
+        hourEnd.setHours(hour + 1, 0, 0, 0);
+        const hourSales = sales.filter(sale => {
+          const createdAt = new Date(sale.createdAt);
+          return createdAt >= hourStart && createdAt < hourEnd;
+        });
+        const revenue = hourSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0);
+        hourlySales.push({ hour, revenue });
+      }
       return {
         date: start.toISOString().split("T")[0],
         totalRevenue,
@@ -77,6 +91,7 @@ export const reportRepository = {
         topProducts,
         paymentMethodBreakdown,
         sales,
+        hourlySales,
       };
     } catch (error) {
       console.error("Error fetching daily report:", error);

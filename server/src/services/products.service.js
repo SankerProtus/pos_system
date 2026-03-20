@@ -1,12 +1,12 @@
 import { productsRepository } from "../repositories/producst.repository.js";
 
 export const productsService = {
-    getProductByBarcode: async (barcode) => {
-      if (!barcode) {
-        throw new Error("Barcode is required");
-      }
-      return await productsRepository.getProductByBarcode(barcode);
-    },
+  getProductByBarcode: async (barcode) => {
+    if (!barcode) {
+      throw new Error("Barcode is required");
+    }
+    return await productsRepository.getProductByBarcode(barcode);
+  },
   getAllProducts: async (categoryId) => {
     return await productsRepository.getAllProducts(categoryId);
   },

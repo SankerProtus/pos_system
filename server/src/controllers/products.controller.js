@@ -1,17 +1,3 @@
-  getProductByBarcode: async (req, res) => {
-    try {
-      const { barcode } = req.params;
-      const product = await productsService.getProductByBarcode(barcode);
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-      res.status(200).json(product);
-    } catch (error) {
-      console.error("Error fetching product by barcode:", error);
-      logger.error(`Error fetching product by barcode: ${error.message}`);
-      res.status(500).json({ message: "Failed to fetch product by barcode" });
-    }
-  },
 import { productsService } from "../services/products.service.js";
 import { logger } from "../utils/logger.js";
 
@@ -85,6 +71,21 @@ export const productsController = {
       console.error("Error updating product:", error);
       logger.error(`Error updating product: ${error.message}`);
       res.status(500).json({ message: "Failed to update product" });
+    }
+  },
+
+  getProductByBarcode: async (req, res) => {
+    try {
+      const { barcode } = req.params;
+      const product = await productsService.getProductByBarcode(barcode);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.status(200).json(product);
+    } catch (error) {
+      console.error("Error fetching product by barcode:", error);
+      logger.error(`Error fetching product by barcode: ${error.message}`);
+      res.status(500).json({ message: "Failed to fetch product by barcode" });
     }
   },
 

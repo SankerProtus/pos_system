@@ -1,8 +1,10 @@
 import { prisma } from "../lib/Prisma.js";
 
 export const productsRepository = {
-  getAllProducts: async () => {
+  getAllProducts: async (categoryId) => {
+    const where = categoryId ? { categoryId } : {};
     return await prisma.product.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

@@ -1,8 +1,8 @@
 import { productsRepository } from "../repositories/producst.repository.js";
 
 export const productsService = {
-    getAllProducts: async () => {
-        return await productsRepository.getAllProducts();
+    getAllProducts: async (categoryId) => {
+        return await productsRepository.getAllProducts(categoryId);
     },
     getProductById: async (id) => {
         if (!id) {

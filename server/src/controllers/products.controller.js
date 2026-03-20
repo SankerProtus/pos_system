@@ -4,7 +4,8 @@ import { logger } from "../utils/logger.js";
 export const productsController = {
     getAllProducts: async (req, res) => {
         try {
-            const products = await productsService.getAllProducts();
+            const { categoryId } = req.query;
+            const products = await productsService.getAllProducts(categoryId);
             res.status(200).json({ data: products });
         } catch (error) {
             console.error("Error fetching products:", error);

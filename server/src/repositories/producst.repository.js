@@ -1,6 +1,40 @@
 import { prisma } from "../lib/Prisma.js";
 
 export const productsRepository = {
+    getProductByBarcode: async (barcode) => {
+      return await prisma.product.findFirst({
+        where: {
+          barcode: {
+            equals: barcode,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+          productName: true,
+          sku: true,
+          barcode: true,
+          description: true,
+          imageUrl: true,
+          price: true,
+          costPrice: true,
+          taxRate: true,
+          category: true,
+          inventory: {
+            select: {
+              quantity: true,
+              lowStockLevel: true,
+              reorderPoint: true,
+            },
+          },
+          saleItems: true,
+          stockAdjustments: true,
+          supplierProducts: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    },
   getAllProducts: async (categoryId) => {
     const where = categoryId ? { categoryId } : {};
     return await prisma.product.findMany({

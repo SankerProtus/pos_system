@@ -29,15 +29,8 @@ export const productsService = {
     if (!id) {
       throw new Error("Product ID is required");
     }
-    if (
-      !data.productName ||
-      !data.price ||
-      !data.categoryId ||
-      !data.description
-    ) {
-      throw new Error(
-        "Product name, price, category, and description are required",
-      );
+    if (!data.productName || !data.price || !data.categoryId) {
+      throw new Error("Product name, price, and category are required");
     }
     return await productsRepository.updateProduct(id, data);
   },

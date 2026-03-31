@@ -1,41 +1,58 @@
 import { create } from "zustand";
 
+const CART_STORAGE_KEY = "pos_cart_items";
+
+// Load cart from localStorage
+const loadCart = () => {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Save cart to localStorage
+const saveCart = (items) => {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {}
+};
+
 export const useCartStore = create((set, get) => ({
-  items: [],
+  items: loadCart(),
 
   addItem: (product) => {
     const items = get().items;
     const existingItem = items.find((item) => item.productId === product.id);
-
+    let newItems;
     if (existingItem) {
-      set({
-        items: items.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        ),
-      });
+      newItems = items.map((item) =>
+        item.productId === product.id
+          ? { ...item, quantity: item.quantity + 1 }
+          : item,
+      );
     } else {
-      set({
-        items: [
-          ...items,
-          {
-            productId: product.id,
-            name: product.name,
-            barcode: product.barcode,
-            price: product.price,
-            taxRate: product.taxRate || 0,
-            quantity: 1,
-          },
-        ],
-      });
+      newItems = [
+        ...items,
+        {
+          productId: product.id,
+          name: product.productName || product.name,
+          barcode: product.barcode,
+          price: product.price,
+          taxRate: product.taxRate || 0,
+          quantity: 1,
+        },
+      ];
     }
+    set({ items: newItems });
+    saveCart(newItems);
   },
 
   removeItem: (productId) => {
-    set({
-      items: get().items.filter((item) => item.productId !== productId),
-    });
+    const newItems = get().items.filter((item) => item.productId !== productId);
+    set({ items: newItems });
+    saveCart(newItems);
   },
 
   updateQty: (productId, qty) => {
@@ -43,16 +60,16 @@ export const useCartStore = create((set, get) => ({
       get().removeItem(productId);
       return;
     }
-
-    set({
-      items: get().items.map((item) =>
-        item.productId === productId ? { ...item, quantity: qty } : item,
-      ),
-    });
+    const newItems = get().items.map((item) =>
+      item.productId === productId ? { ...item, quantity: qty } : item,
+    );
+    set({ items: newItems });
+    saveCart(newItems);
   },
 
   clearCart: () => {
     set({ items: [] });
+    saveCart([]);
   },
 
   subtotal: () => {
@@ -79,3 +96,10 @@ export const useCartStore = create((set, get) => ({
     return get().items.reduce((count, item) => count + item.quantity, 0);
   },
 }));
+
+// Optional: Listen for storage events to sync cart across tabs
+window.addEventListener("storage", (e) => {
+  if (e.key === CART_STORAGE_KEY) {
+    useCartStore.setState({ items: loadCart() });
+  }
+});

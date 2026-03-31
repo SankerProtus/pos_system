@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import Barcode from "react-barcode";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
 
@@ -56,6 +57,12 @@ export const Receipt = forwardRef(
                 </span>
                 <span>{formatCurrency(item.lineTotal)}</span>
               </div>
+              {/* Product barcode as text */}
+              {item.barcode && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Barcode: {item.barcode}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -84,11 +91,11 @@ export const Receipt = forwardRef(
           </div>
           <div className="flex justify-between">
             <span>Paid:</span>
-            <span>{formatCurrency(sale.amountPaid)}</span>
+            <span>{formatCurrency(Number(sale.payment?.amountPaid) || 0.00)}</span>
           </div>
           <div className="flex justify-between">
             <span>Change:</span>
-            <span>{formatCurrency(sale.change)}</span>
+            <span>{formatCurrency(Number(sale.payment?.changeDue) || 0.00)}</span>
           </div>
         </div>
 
@@ -100,53 +107,12 @@ export const Receipt = forwardRef(
           <p>Please come again</p>
         </div>
 
-        {/* Barcode Placeholder */}
-        <div className="mt-4 flex justify-center items-center w-full">
-          <svg
-            width="180"
-            height="60"
-            viewBox="0 0 180 60"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect width="180" height="60" fill="white" />
-
-            {/* Barcode bars */}
-            <g fill="black">
-              <rect x="10" width="4" height="40" />
-              <rect x="18" width="2" height="40" />
-              <rect x="24" width="6" height="40" />
-              <rect x="34" width="2" height="40" />
-              <rect x="40" width="4" height="40" />
-              <rect x="48" width="2" height="40" />
-              <rect x="54" width="8" height="40" />
-              <rect x="66" width="2" height="40" />
-              <rect x="72" width="4" height="40" />
-              <rect x="80" width="2" height="40" />
-              <rect x="86" width="6" height="40" />
-              <rect x="96" width="2" height="40" />
-              <rect x="102" width="8" height="40" />
-              <rect x="114" width="2" height="40" />
-              <rect x="120" width="4" height="40" />
-              <rect x="128" width="2" height="40" />
-              <rect x="134" width="6" height="40" />
-              <rect x="144" width="2" height="40" />
-              <rect x="150" width="8" height="40" />
-              <rect x="162" width="2" height="40" />
-              <rect x="168" width="4" height="40" />
-            </g>
-
-            {/* Human readable text */}
-            <text
-              x="90"
-              y="55"
-              text-anchor="middle"
-              font-family="monospace"
-              font-size="14"
-            >
-              1234567890
-            </text>
-          </svg>
-        </div>
+        {/* Receipt barcode (transaction) */}
+        {sale.receipt?.receiptNumber && (
+          <div className="mt-4 flex justify-center items-center w-full">
+            <Barcode value={sale.receipt.receiptNumber} width={1.5} height={50} fontSize={15} displayValue={true} />
+          </div>
+        )}
       </div>
     );
   },

@@ -46,19 +46,19 @@ export const Modal = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#263548]">
-          <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
+          <h2 className="text-xl font-bold text-amber-200 drop-shadow-sm">{title}</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-100 transition"
+            className="text-amber-400 hover:text-amber-200 transition"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         </div>
 
         {/* Content */}
         <div
-          className="overflow-y-auto"
-          style={{ maxHeight: "calc(90vh - 80px)" }}
+          className="overflow-y-auto text-slate-100 text-base"
+          style={{ maxHeight: "calc(90vh - 80px)", color: '#f8fafc' }}
         >
           {children}
         </div>

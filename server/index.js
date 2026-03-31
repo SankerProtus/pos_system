@@ -60,7 +60,7 @@ app.use("/api/customers", customersRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/categories", categoriesRouter);
 app.use("/api/inventory", inventoryRouter);
-app.use("/api", reportRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/pos", posRouter);
 app.use("/api/settings", settingsRouter);
 

@@ -16,6 +16,33 @@ import { Plus, Edit, Trash2, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
 export const ProductsPage = () => {
+  // Image upload state
+  const [imageMode, setImageMode] = useState("upload"); // "upload" or "url"
+  const [imageFile, setImageFile] = useState(null);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Handle image file change
+  const handleImageFileChange = (e) => {
+    const file = e.target.files[0];
+    setImageFile(file);
+    setImageUrlInput("");
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setImagePreview(ev.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  // Handle image URL change
+  const handleImageUrlChange = (e) => {
+    setImageUrlInput(e.target.value);
+    setImageFile(null);
+    setImagePreview(e.target.value);
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -125,6 +152,10 @@ export const ProductsPage = () => {
       description: product.description,
       lowStockThreshold: product.inventory?.lowStockLevel,
     });
+    // Reset image input states
+    setImageFile(null);
+    setImageUrlInput(product.imageUrl || "");
+    setImagePreview(product.imageUrl || null);
     setIsFormModalOpen(true);
   };
 
@@ -134,6 +165,14 @@ export const ProductsPage = () => {
   };
 
   const onSubmit = (data) => {
+    let imageUrl = "";
+    if (imageMode === "upload" && imageFile) {
+      imageUrl = imagePreview;
+    } else if (imageMode === "url" && imageUrlInput) {
+      imageUrl = imageUrlInput;
+    } else if (editingProduct && editingProduct.imageUrl) {
+      imageUrl = editingProduct.imageUrl;
+    }
     const payload = {
       productName: data.name,
       sku: data.sku,
@@ -143,6 +182,7 @@ export const ProductsPage = () => {
       costPrice: data.cost,
       taxRate: data.taxRate,
       categoryId: data.categoryId,
+      imageUrl,
     };
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, data: payload });
@@ -182,6 +222,7 @@ export const ProductsPage = () => {
           <img
             src={row.imageUrl || "/no-image.jpg"}
             alt={row.productName}
+            key={row.imageUrl || row.id}
             style={{
               width: 40,
               height: 40,
@@ -368,7 +409,109 @@ export const ProductsPage = () => {
         title={editingProduct ? "Edit Product" : "Add New Product"}
         width={600}
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6">
+        <form
+          onSubmit={handleSubmit((data) => {
+            let imageUrl = "";
+            if (imageMode === "upload" && imageFile) {
+              // In real app, upload imageFile to server or cloud and get URL
+              // For demo, use base64 preview
+              imageUrl = imagePreview;
+            } else if (imageMode === "url" && imageUrlInput) {
+              imageUrl = imageUrlInput;
+            }
+            onSubmit({ ...data, imageUrl });
+          })}
+          className="p-6"
+        >
+          {/* Image input section */}
+          <div className="col-span-2 mb-4">
+            <label className="block font-medium mb-2 text-slate-100">
+              Product Image
+            </label>
+            <div className="flex gap-3 mb-2">
+              <Button
+                type="button"
+                variant={imageMode === "upload" ? "primary" : "outline"}
+                size="sm"
+                onClick={() => setImageMode("upload")}
+              >
+                Upload
+              </Button>
+              <Button
+                type="button"
+                variant={imageMode === "url" ? "primary" : "outline"}
+                size="sm"
+                onClick={() => setImageMode("url")}
+              >
+                URL
+              </Button>
+            </div>
+            {imageMode === "upload" ? (
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageFileChange}
+                className="block mb-2 text-slate-100 bg-[#1e293b] border border-amber-500 rounded px-3 py-2"
+                style={{ color: "#f8fafc" }} // lighter text
+              />
+            ) : (
+              <input
+                type="text"
+                value={imageUrlInput}
+                onChange={handleImageUrlChange}
+                placeholder="Paste image URL..."
+                className="block w-full mb-2 px-3 py-2 rounded border border-amber-500 bg-[#1e293b] text-slate-100"
+                style={{ color: "#f8fafc" }} // lighter text
+              />
+            )}
+            {imagePreview && (
+              <>
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  style={{
+                    width: 80,
+                    height: 80,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                    border: "1px solid #222",
+                    cursor: "pointer",
+                  }}
+                  className="mt-2"
+                  onClick={() => setIsImageModalOpen(true)}
+                />
+                {isImageModalOpen && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      top: 0,
+                      left: 0,
+                      width: "100vw",
+                      height: "100vh",
+                      background: "rgba(0,0,0,0.7)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 1000,
+                    }}
+                    onClick={() => setIsImageModalOpen(false)}
+                  >
+                    <img
+                      src={imagePreview}
+                      alt="Full Preview"
+                      style={{
+                        maxWidth: "80vw",
+                        maxHeight: "80vh",
+                        borderRadius: 12,
+                        boxShadow: "0 4px 32px rgba(0,0,0,0.5)",
+                        border: "2px solid #fff",
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <FormInput
               {...register("name", { required: "Name is required" })}
@@ -444,9 +587,7 @@ export const ProductsPage = () => {
               error={errors.lowStockThreshold?.message}
             />
             <FormInput
-              {...register("description", {
-                required: "Description is required",
-              })}
+              {...register("description")}
               label="Description"
               placeholder="Enter product description"
               error={errors.description?.message}
@@ -461,7 +602,7 @@ export const ProductsPage = () => {
               })}
               label="Tax Rate (%)"
               type="number"
-              step="0.1"
+              step="0.01"
               placeholder="5.0"
               error={errors.taxRate?.message}
             />

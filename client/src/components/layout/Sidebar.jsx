@@ -26,7 +26,6 @@ const MENU_CONFIG = [
     label: "POS Terminal",
     icon: ShoppingCart,
     roles: ["ADMIN", "MANAGER", "CASHIER"],
-    badge: 3,
   },
   {
     path: "/sales",
@@ -45,7 +44,6 @@ const MENU_CONFIG = [
     label: "Inventory",
     icon: Warehouse,
     roles: ["ADMIN", "MANAGER"],
-    badge: 4,
   },
   {
     path: "/customers",
@@ -139,7 +137,7 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      {/* Footer - User Info */}
+      {/* Footer */}
       <div className="px-4 py-4 border-t border-[#1e2d45]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white font-semibold text-sm">

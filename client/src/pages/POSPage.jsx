@@ -96,11 +96,21 @@ export const POSPage = () => {
     }
   };
 
+  // Debounce Charge button
+  const [chargeDisabled, setChargeDisabled] = useState(false);
   const handleCharge = () => {
-    if (items.length === 0) return;
+    if (items.length === 0 || chargeDisabled) return;
+    setChargeDisabled(true);
     setIsPaymentModalOpen(true);
     setAmountPaid(grandTotal(discount).toFixed(2));
+    setTimeout(() => setChargeDisabled(false), 1500); // 1.5s debounce
   };
+  // Offline handling stub
+  useEffect(() => {
+    if (!navigator.onLine) {
+      toast.error("You are offline. Some features may not work.");
+    }
+  }, []);
 
   const handleConfirmPayment = () => {
     const total = Math.round(grandTotal(discount) * 100) / 100;
@@ -114,7 +124,7 @@ export const POSPage = () => {
     const saleData = {
       items: items.map((item) => ({
         productId: item.productId,
-        name: item.name,
+        productName: item.name,
         barcode: item.barcode,
         price: item.price,
         taxRate: item.taxRate,
@@ -423,8 +433,9 @@ export const POSPage = () => {
               fullWidth
               onClick={handleConfirmPayment}
               loading={createSaleMutation.isLoading}
+              disabled={createSaleMutation.isLoading}
             >
-              Confirm Payment ✓
+              {createSaleMutation.isLoading ? "Processing..." : "Confirm Payment ✓"}
             </Button>
           </div>
         </div>

@@ -28,6 +28,7 @@ export const ReportsPage = () => {
     },
     enabled: activeTab === 'daily',
   });
+  { console.log("Daily Report Data:", dailyReport) }
 
   const { data: weeklyReport } = useQuery({
     queryKey: ['weekly-report', weekStart],
@@ -127,7 +128,9 @@ export const ReportsPage = () => {
             ></div>
           </div>
           <span className="text-xs font-mono w-12 text-right">
-            {row.revenueShare.toFixed(1)}%
+            {(row.revenueShare !== undefined && row.revenueShare !== null)
+              ? row.revenueShare.toFixed(1)
+              : "0.0"}%
           </span>
         </div>
       ),
@@ -140,21 +143,21 @@ export const ReportsPage = () => {
       header: 'Cashier',
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-100">{row.name}</p>
-          <Badge variant="indigo">{row.role}</Badge>
+          <p className="font-medium text-slate-100">{row.cashier.name}</p>
+          <Badge variant="indigo">{row.cashier.role}</Badge>
         </div>
       ),
     },
     {
       key: 'transactions',
       header: 'Transactions',
-      render: (row) => <span className="font-mono">{row.transactions}</span>,
+      render: (row) => <span className="font-mono">{row.totalSales}</span>,
     },
     {
       key: 'revenue',
       header: 'Revenue',
       render: (row) => (
-        <span className="font-mono text-amber-400">{formatCurrency(row.revenue)}</span>
+        <span className="font-mono text-amber-400">{formatCurrency(row.totalRevenue)}</span>
       ),
     },
     {
@@ -294,6 +297,7 @@ export const ReportsPage = () => {
               <KpiCard
                 label="Last Week"
                 value={formatCurrency(weeklyReport?.previousWeekRevenue || 0)}
+                // Calculate percentage change and handle division by zero
                 subtitle={
                   weeklyReport?.totalRevenue && weeklyReport?.previousWeekRevenue
                     ? `${(

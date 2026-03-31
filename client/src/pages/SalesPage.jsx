@@ -97,7 +97,11 @@ export const SalesPage = () => {
   };
 
   const getPaymentBadge = (method) => {
-    return <Badge variant="indigo">{method ? method.replace("_", " ") : "N/A"}</Badge>;
+    return (
+      <Badge variant="indigo">
+        {method ? method.replace("_", " ") : "N/A"}
+      </Badge>
+    );
   };
 
   const columns = [

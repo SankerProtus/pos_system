@@ -1,10 +1,11 @@
 import express from 'express';
 import { salesController } from "../controllers/sales.controller.js";
+import { authenticateToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 router.get("/", salesController.getSales);
-router.post("/", salesController.createSale);
-router.post("/:id/void", salesController.voidSale);
+router.post("/", authenticateToken, salesController.createSale);
+router.post("/:id/void", authenticateToken, salesController.voidSale);
 
 export { router as salesRoutes };

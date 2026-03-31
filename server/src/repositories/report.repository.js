@@ -17,7 +17,13 @@ export const reportRepository = {
           status: "COMPLETED",
         },
         include: {
-          saleItems: true,
+          saleItems: {
+            include: {
+              product: {
+                select: { costPrice: true },
+              },
+            },
+          },
           payment: true,
         },
       });
@@ -26,6 +32,17 @@ export const reportRepository = {
         (sum, sale) => sum + Number(sale.totalAmount || 0),
         0,
       );
+
+      // Calculate gross profit
+      let grossProfit = 0;
+      for (const sale of sales) {
+        for (const item of sale.saleItems) {
+          const subtotal = Number(item.subtotal || 0);
+          const quantity = Number(item.quantity || 0);
+          const costPrice = Number(item.product?.costPrice || 0);
+          grossProfit += subtotal - quantity * costPrice;
+        }
+      }
       // Total transactions
       const totalTransactions = sales.length;
       // Total items sold
@@ -68,18 +85,21 @@ export const reportRepository = {
           quantity: { lt: 10 },
         },
       });
-      // Hourly sales (8:00–21:00)
+      // Hourly sales
       const hourlySales = [];
       for (let hour = 8; hour <= 21; hour++) {
         const hourStart = new Date(start);
         hourStart.setHours(hour, 0, 0, 0);
         const hourEnd = new Date(hourStart);
         hourEnd.setHours(hour + 1, 0, 0, 0);
-        const hourSales = sales.filter(sale => {
+        const hourSales = sales.filter((sale) => {
           const createdAt = new Date(sale.createdAt);
           return createdAt >= hourStart && createdAt < hourEnd;
         });
-        const revenue = hourSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0);
+        const revenue = hourSales.reduce(
+          (sum, sale) => sum + Number(sale.totalAmount || 0),
+          0,
+        );
         hourlySales.push({ hour, revenue });
       }
       return {
@@ -92,6 +112,7 @@ export const reportRepository = {
         paymentMethodBreakdown,
         sales,
         hourlySales,
+        grossProfit,
       };
     } catch (error) {
       console.error("Error fetching daily report:", error);
@@ -122,19 +143,35 @@ export const reportRepository = {
       });
       // Group by product
       const productMap = {};
+      let totalRevenueAllProducts = 0;
       for (const item of sales) {
         const pid = item.productId;
         if (!productMap[pid]) {
           productMap[pid] = {
             product: item.product,
-            totalSold: 0,
-            totalRevenue: 0,
+            unitsSold: 0,
+            revenue: 0,
           };
         }
-        productMap[pid].totalSold += item.quantity;
-        productMap[pid].totalRevenue += Number(item.subtotal || 0);
+        productMap[pid].unitsSold += item.quantity;
+        productMap[pid].revenue += Number(item.subtotal || 0);
+        totalRevenueAllProducts += Number(item.subtotal || 0);
       }
-      return Object.values(productMap);
+      // Calculate avgPrice and revenueShare for each product
+      const result = Object.values(productMap).map((prod) => {
+        const avgPrice = prod.unitsSold > 0 ? prod.revenue / prod.unitsSold : 0;
+        const revenueShare =
+          totalRevenueAllProducts > 0
+            ? (prod.revenue / totalRevenueAllProducts) * 100
+            : 0;
+        return {
+          ...prod,
+          name: prod.product?.productName || "",
+          avgPrice,
+          revenueShare,
+        };
+      });
+      return result;
     } catch (error) {
       console.error("Error fetching product report:", error);
       throw new Error("Internal server error");
@@ -164,17 +201,46 @@ export const reportRepository = {
       const cashierMap = {};
       for (const sale of sales) {
         const uid = sale.userId;
+        const saleHour = new Date(sale.createdAt).getHours();
         if (!cashierMap[uid]) {
           cashierMap[uid] = {
             cashier: sale.user,
             totalSales: 0,
             totalRevenue: 0,
+            hours: {}, // for topHour
           };
         }
         cashierMap[uid].totalSales += 1;
         cashierMap[uid].totalRevenue += Number(sale.totalAmount || 0);
+        // Count sales per hour
+        cashierMap[uid].hours[saleHour] =
+          (cashierMap[uid].hours[saleHour] || 0) + 1;
       }
-      return Object.values(cashierMap);
+
+      // Add avgSaleValue and topHour
+      const result = Object.values(cashierMap).map((cashier) => {
+        const avgSaleValue =
+          cashier.totalSales > 0
+            ? cashier.totalRevenue / cashier.totalSales
+            : 0;
+        // Find topHour
+        let topHour = null;
+        let maxCount = 0;
+        for (const [hour, count] of Object.entries(cashier.hours)) {
+          if (count > maxCount) {
+            maxCount = count;
+            topHour = hour;
+          }
+        }
+        return {
+          cashier: cashier.cashier,
+          totalSales: cashier.totalSales,
+          totalRevenue: cashier.totalRevenue,
+          avgSaleValue,
+          topHour,
+        };
+      });
+      return result;
     } catch (error) {
       console.error("Error fetching cashier report:", error);
       throw new Error("Internal server error");
@@ -226,18 +292,38 @@ export const reportRepository = {
         days.push({ label, revenue });
       }
 
-      const totalSales = sales.length;
-      const totalAmount = sales.reduce(
+      const totalTransactions = sales.length;
+      const totalRevenue = sales.reduce(
         (sum, sale) => sum + Number(sale.totalAmount || 0),
         0,
       );
+
+      // Calculate previous week revenue
+      const prevStartOfWeek = new Date(startOfWeek);
+      prevStartOfWeek.setDate(startOfWeek.getDate() - 7);
+      const prevEndOfWeek = new Date(startOfWeek);
+      // Get all completed sales for previous week
+      const prevSales = await prisma.sale.findMany({
+        where: {
+          createdAt: {
+            gte: prevStartOfWeek,
+            lt: prevEndOfWeek,
+          },
+          status: "COMPLETED",
+        },
+      });
+      const previousWeekRevenue = prevSales.reduce(
+        (sum, sale) => sum + Number(sale.totalAmount || 0),
+        0,
+      );
+
       return {
         weekStart: startOfWeek.toISOString().split("T")[0],
         weekEnd: endOfWeek.toISOString().split("T")[0],
-        totalSales,
-        totalAmount,
+        totalRevenue,
+        totalTransactions,
+        previousWeekRevenue,
         days,
-        sales,
       };
     } catch (error) {
       console.error("Error fetching weekly report:", error);

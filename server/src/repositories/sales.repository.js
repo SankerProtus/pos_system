@@ -67,4 +67,9 @@ export const salesRepository = {
       data: { status: "VOIDED" },
     });
   },
+  createReceipt: async (receiptData) => {
+    return await prisma.receipt.create({
+      data: receiptData,
+    });
+  },
 };

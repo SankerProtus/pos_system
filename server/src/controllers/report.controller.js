@@ -18,7 +18,7 @@ export const reportController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
-  getWeeklyReport: async (req, res) => {
+  getWeeklyReport: async (_req, res) => {
     try {
       const report = await reportService.getWeeklyReport();
       res.status(200).json(report);
@@ -27,7 +27,7 @@ export const reportController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
-  getMonthlyReport: async (req, res) => {
+  getMonthlyReport: async (_req, res) => {
     try {
       const report = await reportService.getMonthlyReport();
       res.status(200).json(report);

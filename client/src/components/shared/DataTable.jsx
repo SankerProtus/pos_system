@@ -82,7 +82,7 @@ export const DataTable = ({
               >
                 {columns.map((col, colIdx) => (
                   <td key={colIdx} className="px-4 py-3 text-sm text-slate-300">
-                    {col.render ? col.render(row) : row[col.key]}
+                    {col.render ? col.render(row, rowIdx) : row[col.key]}
                   </td>
                 ))}
               </tr>

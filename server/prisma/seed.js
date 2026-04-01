@@ -345,9 +345,9 @@ async function main() {
       },
       receipt: {
         receiptNumber: "RCP-20260319-0001",
-        storeName: "POS Demo Store",
-        storeAddress: "789 Main Rd.",
-        storeTaxId: "VAT123456",
+        storeName: "SwiftPOS Retail",
+        storeAddress: "123 Main Street",
+        storeTaxId: "TAX-123456",
         cashierName: users[2].name,
         customerName: customers[0].name,
         printedAt: new Date(),
@@ -392,9 +392,9 @@ async function main() {
       },
       receipt: {
         receiptNumber: "RCP-20260319-0002",
-        storeName: "POS Demo Store",
-        storeAddress: "789 Main Rd.",
-        storeTaxId: "VAT123456",
+        storeName: "SwiftPOS Retail",
+        storeAddress: "123 Main Street",
+        storeTaxId: "TAX-123456",
         cashierName: users[2].name,
         customerName: customers[1].name,
         printedAt: new Date(),
@@ -439,9 +439,9 @@ async function main() {
       },
       receipt: {
         receiptNumber: "RCP-20260319-0003",
-        storeName: "POS Demo Store",
-        storeAddress: "789 Main Rd.",
-        storeTaxId: "VAT123456",
+        storeName: "SwiftPOS Retail",
+        storeAddress: "123 Main Street",
+        storeTaxId: "TAX-123456",
         cashierName: users[1].name,
         customerName: customers[2].name,
         printedAt: new Date(),
@@ -516,9 +516,9 @@ async function main() {
   // Seed Settings
   await prisma.setting.create({
     data: {
-      storeName: "POS Demo Store",
-      storeAddress: "789 Main Rd.",
-      storeTaxId: "VAT123456",
+      storeName: "SwiftPOS Retail",
+      storeAddress: "123 Main Street",
+      storeTaxId: "TAX-123456",
       currency: "USD",
       language: "en",
       theme: "light",

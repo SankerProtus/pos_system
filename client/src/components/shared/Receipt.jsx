@@ -5,6 +5,18 @@ import { formatDate } from "../../utils/formatDate";
 
 export const Receipt = forwardRef(
   ({ sale, storeName, storeTIN, storeAddress }, ref) => {
+    const receiptItems =
+      Array.isArray(sale?.items) && sale.items.length > 0
+        ? sale.items
+        : Array.isArray(sale?.saleItems)
+          ? sale.saleItems.map((item) => ({
+              ...item,
+              lineTotal:
+                Number(item.lineTotal ?? item.subtotal) ||
+                Number(item.unitPrice || 0) * Number(item.quantity || 0),
+            }))
+          : [];
+
     return (
       <div
         ref={ref}
@@ -46,7 +58,7 @@ export const Receipt = forwardRef(
 
         {/* Items */}
         <div className="mb-3">
-          {sale.items?.map((item, idx) => (
+          {receiptItems.map((item, idx) => (
             <div key={idx} className="mb-2">
               <div className="flex justify-between text-xs font-semibold">
                 <span>{item.productName}</span>
@@ -55,9 +67,10 @@ export const Receipt = forwardRef(
                 <span>
                   {item.quantity} × {formatCurrency(item.unitPrice)}
                 </span>
-                <span>{formatCurrency(item.lineTotal)}</span>
+                <span>
+                  {formatCurrency(item.lineTotal ?? item.subtotal ?? 0)}
+                </span>
               </div>
-              {/* Product barcode as text */}
               {item.barcode && (
                 <div className="text-xs text-gray-500 mt-1">
                   Barcode: {item.barcode}
@@ -91,11 +104,15 @@ export const Receipt = forwardRef(
           </div>
           <div className="flex justify-between">
             <span>Paid:</span>
-            <span>{formatCurrency(Number(sale.payment?.amountPaid) || 0.00)}</span>
+            <span>
+              {formatCurrency(Number(sale.payment?.amountPaid) || 0.0)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Change:</span>
-            <span>{formatCurrency(Number(sale.payment?.changeDue) || 0.00)}</span>
+            <span>
+              {formatCurrency(Number(sale.payment?.changeDue) || 0.0)}
+            </span>
           </div>
         </div>
 
@@ -110,7 +127,13 @@ export const Receipt = forwardRef(
         {/* Receipt barcode (transaction) */}
         {sale.receipt?.receiptNumber && (
           <div className="mt-4 flex justify-center items-center w-full">
-            <Barcode value={sale.receipt.receiptNumber} width={1.5} height={50} fontSize={15} displayValue={true} />
+            <Barcode
+              value={sale.receipt.receiptNumber}
+              width={1.5}
+              height={50}
+              fontSize={15}
+              displayValue={true}
+            />
           </div>
         )}
       </div>

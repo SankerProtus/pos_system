@@ -31,6 +31,22 @@ export const customersController = {
     }
   },
 
+  getCustomerSales: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const customerSales = await customersService.getCustomerSales(id);
+
+      if (!customerSales) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+
+      res.status(200).json(customerSales);
+    } catch (error) {
+      logger.error("Error fetching customer sales: ", error);
+      res.status(500).json({ error: "Failed to fetch customer sales" });
+    }
+  },
+
   createCustomer: async (req, res) => {
     try {
       const customerData = req.body;

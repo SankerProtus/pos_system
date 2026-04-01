@@ -455,6 +455,7 @@ model Receipt {
   storeTaxId      String?  @db.VarChar(30)          // VAT / TIN number for tax receipts
   cashierName     String   @db.VarChar(100)
   customerName    String?  @db.VarChar(100)
+  items           Json?    // JSON array of { productName, quantity, unitPrice, subtotal }
   printedAt       DateTime?
   emailedAt       DateTime?
   createdAt       DateTime @default(now())

@@ -81,6 +81,59 @@ export const SalesPage = () => {
         0,
       ) || 0;
 
+  const getSalesRows = () => (Array.isArray(sales) ? sales : sales?.data || []);
+
+  const csvEscape = (value) => {
+    if (value === null || value === undefined) return "";
+    const str = String(value).replace(/"/g, '""');
+    return /[",\n]/.test(str) ? `"${str}"` : str;
+  };
+
+  const handleExportCsv = () => {
+    const rows = getSalesRows();
+    if (!rows.length) {
+      toast.error("No sales to export");
+      return;
+    }
+
+    const headers = [
+      "Receipt Number",
+      "Date",
+      "Cashier",
+      "Customer",
+      "Items",
+      "Total Amount",
+      "Payment Method",
+      "Status",
+    ];
+
+    const lines = rows.map((row) => [
+      row.receipt?.receiptNumber || "N/A",
+      row.createdAt ? formatDate.standard(row.createdAt) : "",
+      row.user?.name || "N/A",
+      row.customer?.name || "Walk-in",
+      row.saleItems?.length || 0,
+      Number(row.totalAmount || 0).toFixed(2),
+      row.payment?.method ? row.payment.method.replace("_", " ") : "N/A",
+      row.status || "",
+    ]);
+
+    const csv = [headers, ...lines]
+      .map((line) => line.map(csvEscape).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `sales_${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const statusOptions = [
     { value: "", label: "All Status" },
     { value: "COMPLETED", label: "Completed" },
@@ -230,7 +283,7 @@ export const SalesPage = () => {
                 onChange={setStatusFilter}
               />
             </div>
-            <Button variant="ghost" icon={<Download size={18} />}>
+            <Button variant="ghost" icon={<Download size={18} />} onClick={handleExportCsv}>
               Export CSV
             </Button>
             <div className="ml-auto">
@@ -266,9 +319,9 @@ export const SalesPage = () => {
               <Receipt
                 ref={receiptRef}
                 sale={selectedSale}
-                storeName="My POS Store"
-                storeTIN="C0000000000"
-                storeAddress="123 Main Street, Kumasi"
+                storeName={selectedSale?.receipt?.storeName || ""}
+                storeTIN={selectedSale?.receipt?.storeTaxId || ""}
+                storeAddress={selectedSale?.receipt?.storeAddress || ""}
               />
               <div className="flex justify-around align-middle mt-6 gap-2 mx-auto">
                 <Button variant="ghost" onClick={handlePrint}>

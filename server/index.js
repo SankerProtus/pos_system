@@ -23,17 +23,24 @@ setupTrustProxy(app);
 app.use(passport.initialize());
 
 // Middleware
+const normalizeOrigin = (value) => value?.trim().replace(/\/$/, "");
+
 const allowedOrigins = [
-  process.env.CLIENT_URL || "http://localhost:5173",
-  process.env.FRONTEND_URL || "http://localhost:5173",
-];
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  ...(process.env.ALLOWED_ORIGINS || "").split(","),
+]
+  .map(normalizeOrigin)
+  .filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    const normalizedOrigin = normalizeOrigin(origin);
+
+    if (allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));

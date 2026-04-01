@@ -83,7 +83,10 @@ export const SettingsPage = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <Topbar title="Settings" subtitle="Configure system settings (ADMIN Only)" />
+      <Topbar
+        title="Settings"
+        subtitle="Configure system settings (ADMIN Only)"
+      />
       <div className="flex-1 flex overflow-hidden">
         {/* Left Tabs */}
         <div className="w-50 bg-[#0f172a] border-r border-[#1e2d45] p-4">
@@ -95,10 +98,10 @@ export const SettingsPage = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition',
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition",
                     activeTab === tab.id
-                      ? 'bg-indigo-500 text-white'
-                      : 'text-slate-400 hover:bg-indigo-900/20 hover:text-slate-300'
+                      ? "bg-indigo-500 text-white"
+                      : "text-slate-400 hover:bg-indigo-900/20 hover:text-slate-300",
                   )}
                 >
                   <Icon size={18} />
@@ -112,50 +115,59 @@ export const SettingsPage = () => {
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto bg-[#080e1a] p-6">
           {/* Store Info Tab */}
-          {activeTab === 'store' && (
+          {activeTab === "store" && (
             <div className="max-w-2xl">
               <h2 className="text-xl font-semibold text-slate-100 mb-5">
                 Store Information
               </h2>
-              <form onSubmit={handleSubmitStore(onSubmitStore)} className="space-y-4">
+              <form
+                onSubmit={handleSubmitStore(onSubmitStore)}
+                className="space-y-4"
+              >
                 <FormInput
-                  {...registerStore('storeName')}
+                  {...registerStore("storeName")}
                   label="Store Name"
-                  defaultValue={settings?.storeName || ''}
-                  placeholder="My POS Store"
+                  defaultValue={settings?.storeName || ""}
+                  placeholder={settings?.storeName || "SwiftPOS Retail"}
                 />
                 <FormInput
-                  {...registerStore('storeAddress')}
+                  {...registerStore("storeAddress")}
                   label="Store Address"
-                  defaultValue={settings?.storeAddress || ''}
-                  placeholder="123 Main Street, Accra"
+                  defaultValue={settings?.storeAddress || ""}
+                  placeholder={
+                    settings?.storeAddress || "123 Main Street, Accra"
+                  }
                 />
                 <FormInput
-                  {...registerStore('vatTIN')}
+                  {...registerStore("vatTIN")}
                   label="VAT/TIN"
-                  defaultValue={settings?.vatTIN || ''}
-                  placeholder="C0000000000"
+                  defaultValue={settings?.vatTIN || ""}
+                  placeholder={settings?.vatTIN || "C0000000000"}
                 />
                 <FormInput
-                  {...registerStore('storePhone')}
+                  {...registerStore("storePhone")}
                   label="Phone"
-                  defaultValue={settings?.storePhone || ''}
-                  placeholder="+233XXXXXXXXX"
+                  defaultValue={settings?.storePhone || ""}
+                  placeholder={settings?.storePhone || "+233XXXXXXXXX"}
                 />
                 <FormInput
-                  {...registerStore('currencySymbol')}
+                  {...registerStore("currencySymbol")}
                   label="Currency Symbol"
-                  defaultValue={settings?.currencySymbol || 'GH₵'}
-                  placeholder="GH₵"
+                  defaultValue={settings?.currency || "GH₵"}
+                  placeholder={settings?.currency || "GH₵"}
                 />
                 <FormInput
-                  {...registerStore('storeEmail')}
+                  {...registerStore("storeEmail")}
                   label="Email"
                   type="email"
-                  defaultValue={settings?.storeEmail || ''}
-                  placeholder="store@example.com"
+                  defaultValue={settings?.storeEmail || ""}
+                  placeholder={settings?.storeEmail || "store@example.com"}
                 />
-                <Button type="submit" variant="primary" loading={updateSettingsMutation.isLoading}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  loading={updateSettingsMutation.isLoading}
+                >
                   Save Store Info
                 </Button>
               </form>
@@ -163,7 +175,7 @@ export const SettingsPage = () => {
           )}
 
           {/* Tax & Pricing Tab */}
-          {activeTab === 'tax' && (
+          {activeTab === "tax" && (
             <div className="max-w-2xl">
               <h2 className="text-xl font-semibold text-slate-100 mb-5">
                 Tax & Pricing Settings
@@ -173,9 +185,12 @@ export const SettingsPage = () => {
                   ℹ️ Per-product tax rates will override this global rate
                 </p>
               </div>
-              <form onSubmit={handleSubmitTax(onSubmitTax)} className="space-y-4">
+              <form
+                onSubmit={handleSubmitTax(onSubmitTax)}
+                className="space-y-4"
+              >
                 <FormInput
-                  {...registerTax('globalVatRate')}
+                  {...registerTax("globalVatRate")}
                   label="Global VAT Rate (%)"
                   type="number"
                   step="0.1"
@@ -183,16 +198,20 @@ export const SettingsPage = () => {
                   placeholder="5.0"
                 />
                 <Select
-                  {...registerTax('roundingMethod')}
+                  {...registerTax("roundingMethod")}
                   label="Rounding Method"
                   options={[
-                    { value: 'NEAREST', label: 'Round to Nearest' },
-                    { value: 'UP', label: 'Always Round Up' },
-                    { value: 'DOWN', label: 'Always Round Down' },
+                    { value: "NEAREST", label: "Round to Nearest" },
+                    { value: "UP", label: "Always Round Up" },
+                    { value: "DOWN", label: "Always Round Down" },
                   ]}
-                  defaultValue={settings?.roundingMethod || 'NEAREST'}
+                  defaultValue={settings?.roundingMethod || "NEAREST"}
                 />
-                <Button type="submit" variant="primary" loading={updateSettingsMutation.isLoading}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  loading={updateSettingsMutation.isLoading}
+                >
                   Save Tax Settings
                 </Button>
               </form>
@@ -200,64 +219,77 @@ export const SettingsPage = () => {
           )}
 
           {/* Receipt Tab */}
-          {activeTab === 'receipt' && (
+          {activeTab === "receipt" && (
             <div className="max-w-2xl">
               <h2 className="text-xl font-semibold text-slate-100 mb-5">
                 Receipt Settings
               </h2>
-              <form onSubmit={handleSubmitReceipt(onSubmitReceipt)} className="space-y-4">
+              <form
+                onSubmit={handleSubmitReceipt(onSubmitReceipt)}
+                className="space-y-4"
+              >
                 <FormInput
-                  {...registerReceipt('receiptHeaderText')}
+                  {...registerReceipt("receiptHeaderText")}
                   label="Header Text"
-                  defaultValue={settings?.receiptHeaderText || ''}
+                  defaultValue={settings?.receiptHeaderText || ""}
                   placeholder="Thank you for your purchase"
                 />
                 <FormInput
-                  {...registerReceipt('receiptFooterText')}
+                  {...registerReceipt("receiptFooterText")}
                   label="Footer Text"
-                  defaultValue={settings?.receiptFooterText || ''}
+                  defaultValue={settings?.receiptFooterText || ""}
                   placeholder="Please come again"
                 />
                 <Select
-                  {...registerReceipt('receiptPaperWidth')}
+                  {...registerReceipt("receiptPaperWidth")}
                   label="Paper Width"
                   options={[
-                    { value: '58mm', label: '58mm (Thermal)' },
-                    { value: '80mm', label: '80mm (Thermal)' },
-                    { value: 'A4', label: 'A4 (Standard)' },
+                    { value: "58mm", label: "58mm (Thermal)" },
+                    { value: "80mm", label: "80mm (Thermal)" },
+                    { value: "A4", label: "A4 (Standard)" },
                   ]}
-                  defaultValue={settings?.receiptPaperWidth || '80mm'}
+                  defaultValue={settings?.receiptPaperWidth || "80mm"}
                 />
                 <div className="space-y-3">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      {...registerReceipt('autoPrint')}
+                      {...registerReceipt("autoPrint")}
                       defaultChecked={settings?.autoPrint || false}
                       className="w-5 h-5 rounded border-[#263548] bg-[#0a1628] text-indigo-500 focus:ring-2 focus:ring-indigo-500"
                     />
-                    <span className="text-sm text-slate-300">Auto-print receipts</span>
+                    <span className="text-sm text-slate-300">
+                      Auto-print receipts
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      {...registerReceipt('showLoyaltyPoints')}
+                      {...registerReceipt("showLoyaltyPoints")}
                       defaultChecked={settings?.showLoyaltyPoints || false}
                       className="w-5 h-5 rounded border-[#263548] bg-[#0a1628] text-indigo-500 focus:ring-2 focus:ring-indigo-500"
                     />
-                    <span className="text-sm text-slate-300">Show loyalty points on receipt</span>
+                    <span className="text-sm text-slate-300">
+                      Show loyalty points on receipt
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      {...registerReceipt('showStoreLogo')}
+                      {...registerReceipt("showStoreLogo")}
                       defaultChecked={settings?.showStoreLogo || false}
                       className="w-5 h-5 rounded border-[#263548] bg-[#0a1628] text-indigo-500 focus:ring-2 focus:ring-indigo-500"
                     />
-                    <span className="text-sm text-slate-300">Show store logo</span>
+                    <span className="text-sm text-slate-300">
+                      Show store logo
+                    </span>
                   </label>
                 </div>
-                <Button type="submit" variant="primary" loading={updateSettingsMutation.isLoading}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  loading={updateSettingsMutation.isLoading}
+                >
                   Save Receipt Settings
                 </Button>
               </form>
@@ -265,14 +297,17 @@ export const SettingsPage = () => {
           )}
 
           {/* Loyalty Tab */}
-          {activeTab === 'loyalty' && (
+          {activeTab === "loyalty" && (
             <div className="max-w-2xl">
               <h2 className="text-xl font-semibold text-slate-100 mb-5">
                 Loyalty Program Settings
               </h2>
-              <form onSubmit={handleSubmitLoyalty(onSubmitLoyalty)} className="space-y-4">
+              <form
+                onSubmit={handleSubmitLoyalty(onSubmitLoyalty)}
+                className="space-y-4"
+              >
                 <FormInput
-                  {...registerLoyalty('pointsPerGHC')}
+                  {...registerLoyalty("pointsPerGHC")}
                   label="Points per GH₵ Spent"
                   type="number"
                   step="0.1"
@@ -280,7 +315,7 @@ export const SettingsPage = () => {
                   placeholder="1.0"
                 />
                 <FormInput
-                  {...registerLoyalty('ghcPerPoint')}
+                  {...registerLoyalty("ghcPerPoint")}
                   label="GH₵ Value per Point"
                   type="number"
                   step="0.01"
@@ -288,13 +323,17 @@ export const SettingsPage = () => {
                   placeholder="0.10"
                 />
                 <FormInput
-                  {...registerLoyalty('minimumPointsToRedeem')}
+                  {...registerLoyalty("minimumPointsToRedeem")}
                   label="Minimum Points to Redeem"
                   type="number"
                   defaultValue={settings?.minimumPointsToRedeem || 100}
                   placeholder="100"
                 />
-                <Button type="submit" variant="primary" loading={updateSettingsMutation.isLoading}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  loading={updateSettingsMutation.isLoading}
+                >
                   Save Loyalty Settings
                 </Button>
               </form>
@@ -302,7 +341,7 @@ export const SettingsPage = () => {
           )}
 
           {/* Backup Tab */}
-          {activeTab === 'backup' && (
+          {activeTab === "backup" && (
             <div className="max-w-2xl">
               <h2 className="text-xl font-semibold text-slate-100 mb-5">
                 Backup & Data Management
@@ -328,12 +367,12 @@ export const SettingsPage = () => {
                 <Select
                   label="Backup Frequency"
                   options={[
-                    { value: 'DAILY', label: 'Daily' },
-                    { value: 'WEEKLY', label: 'Weekly' },
-                    { value: 'MONTHLY', label: 'Monthly' },
-                    { value: 'MANUAL', label: 'Manual Only' },
+                    { value: "DAILY", label: "Daily" },
+                    { value: "WEEKLY", label: "Weekly" },
+                    { value: "MONTHLY", label: "Monthly" },
+                    { value: "MANUAL", label: "Manual Only" },
                   ]}
-                  defaultValue={settings?.backupFrequency || 'DAILY'}
+                  defaultValue={settings?.backupFrequency || "DAILY"}
                 />
 
                 <div className="pt-4 space-y-3">

@@ -125,10 +125,9 @@ export const salesService = {
       const customerName = newSale.customer?.name || null;
 
       // Store info for receipt
-      const storeName = process.env.VITE_STORE_NAME || "SwiftPOS Retail";
-      const storeAddress =
-        process.env.VITE_STORE_ADDRESS || "123 Main Street, Accra";
-      const storeTaxId = process.env.VITE_STORE_TAX_ID || "C0000000000";
+        const storeName = process.env.STORE_NAME || "SwiftPOS Retail";
+        const storeAddress = process.env.STORE_ADDRESS || "123 Main Street";
+        const storeTaxId = process.env.STORE_TAX_ID || "TAX-123456";
 
       // Create the receipt using the repository
       const receipt = await salesRepository.createReceipt({
@@ -139,6 +138,12 @@ export const salesService = {
         storeTaxId,
         cashierName: userName,
         customerName,
+        items: newSale.saleItems.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          subtotal: item.subtotal,
+        })),
       });
 
       // Return the sale with the attached receipt

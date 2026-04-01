@@ -20,6 +20,7 @@ export const POSPage = () => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [amountPaid, setAmountPaid] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [discount, setDiscount] = useState(0);
   const [completedSale, setCompletedSale] = useState(null);
   const barcodeInputRef = useRef(null);
@@ -51,7 +52,7 @@ export const POSPage = () => {
     },
   });
 
-  const { data: products, isLoading } = useQuery({
+  const { data: products } = useQuery({
     queryKey: [
       "products",
       { categoryId: selectedCategory, search: searchTerm },
@@ -61,6 +62,14 @@ export const POSPage = () => {
       if (selectedCategory) params.append("categoryId", selectedCategory);
       if (searchTerm) params.append("search", searchTerm);
       const response = await apiClient.get(`/products?${params}`);
+      return response.data;
+    },
+  });
+
+  const { data: customers } = useQuery({
+    queryKey: ["customers", "pos-selection"],
+    queryFn: async () => {
+      const response = await apiClient.get("/customers");
       return response.data;
     },
   });
@@ -82,8 +91,11 @@ export const POSPage = () => {
       toast.success("Sale completed successfully!");
     },
     onError: (error) => {
-      toast.error(error?.response?.data?.message ||
-      error?.response?.data?.error || "Failed to complete sale");
+      toast.error(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Failed to complete sale",
+      );
     },
   });
 
@@ -95,7 +107,7 @@ export const POSPage = () => {
         setBarcode("");
         setSearchTerm("");
         toast.success("Product added to cart");
-      } catch (error) {
+      } catch {
         toast.error("Product not found");
       }
     }
@@ -114,7 +126,7 @@ export const POSPage = () => {
     setChargeDisabled(true);
     setIsPaymentModalOpen(true);
     setAmountPaid(grandTotal(discount).toFixed(2));
-    setTimeout(() => setChargeDisabled(false), 1500); // 1.5s debounce
+    setTimeout(() => setChargeDisabled(false), 1500);
   };
   // Offline handling stub
   useEffect(() => {
@@ -150,6 +162,7 @@ export const POSPage = () => {
       paymentMethod,
       amountPaid: paid,
       discountAmount: discount,
+      customerId: selectedCustomerId || null,
     };
 
     createSaleMutation.mutate(saleData);
@@ -165,6 +178,7 @@ export const POSPage = () => {
     setCompletedSale(null);
     setDiscount(0);
     setAmountPaid("");
+    setSelectedCustomerId("");
     setPaymentMethod("CASH");
     barcodeInputRef.current?.focus();
   };
@@ -394,6 +408,24 @@ export const POSPage = () => {
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
+              Customer (optional)
+            </label>
+            <select
+              value={selectedCustomerId}
+              onChange={(e) => setSelectedCustomerId(e.target.value)}
+              className="w-full px-4 py-3 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Walk-in Customer</option>
+              {(customers?.data || []).map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name} {customer.phone ? `(${customer.phone})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
               Payment Method
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -452,7 +484,9 @@ export const POSPage = () => {
               loading={createSaleMutation.isLoading}
               disabled={createSaleMutation.isLoading}
             >
-              {createSaleMutation.isLoading ? "Processing..." : "Confirm Payment ✓"}
+              {createSaleMutation.isLoading
+                ? "Processing..."
+                : "Confirm Payment ✓"}
             </Button>
           </div>
         </div>
@@ -470,9 +504,9 @@ export const POSPage = () => {
             <Receipt
               ref={receiptRef}
               sale={completedSale}
-              storeName="My POS Store"
-              storeTIN="C0000000000"
-              storeAddress="123 Main Street, Accra"
+              storeName={completedSale?.receipt?.storeName || ""}
+              storeTIN={completedSale?.receipt?.storeTaxId || ""}
+              storeAddress={completedSale?.receipt?.storeAddress || ""}
             />
           )}
           <div className="flex gap-3 mt-6">

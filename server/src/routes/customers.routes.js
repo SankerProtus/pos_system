@@ -6,6 +6,9 @@ const router = express.Router();
 // Get all customers
 router.get('/', customersController.getAllCustomers);
 
+// Get sales for a customer
+router.get('/:id/sales', customersController.getCustomerSales);
+
 // Get a customer by ID
 router.get('/:id', customersController.getCustomerById);
 

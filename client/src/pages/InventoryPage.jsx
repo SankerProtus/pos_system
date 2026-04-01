@@ -18,6 +18,8 @@ export const InventoryPage = () => {
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [adjustmentReason, setAdjustmentReason] = useState("PURCHASE");
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+  const [receiveProductId, setReceiveProductId] = useState("");
 
   const queryClient = useQueryClient();
   const {
@@ -26,6 +28,19 @@ export const InventoryPage = () => {
     reset,
     formState: { errors },
   } = useForm();
+
+  const {
+    register: registerReceive,
+    handleSubmit: handleSubmitReceive,
+    reset: resetReceive,
+    formState: { errors: receiveErrors },
+  } = useForm({
+    defaultValues: {
+      quantityChange: "",
+      reference: "",
+      notes: "",
+    },
+  });
 
   const { data: inventory, isLoading } = useQuery({
     queryKey: ["inventory"],
@@ -44,8 +59,11 @@ export const InventoryPage = () => {
       queryClient.invalidateQueries(["inventory"]);
       toast.success("Stock adjusted successfully");
       setIsAdjustModalOpen(false);
+      setIsReceiveModalOpen(false);
       setSelectedProduct(null);
+      setReceiveProductId("");
       reset();
+      resetReceive();
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Failed to adjust stock");
@@ -60,13 +78,111 @@ export const InventoryPage = () => {
   };
 
   const onSubmit = (data) => {
+    const quantity = parseInt(data.quantityChange, 10);
+    if (!Number.isFinite(quantity)) {
+      toast.error("Enter a valid quantity change");
+      return;
+    }
+
     adjustStockMutation.mutate({
       productId: selectedProduct.productId,
-      quantityChange: parseInt(data.quantityChange),
+      quantityChange: quantity,
       reason: adjustmentReason,
       notes: data.notes,
       reference: data.reference,
     });
+  };
+
+  const receiveProductOptions = [
+    { value: "", label: "Select Product" },
+    ...(inventory?.data?.map((item) => ({
+      value: item.productId,
+      label: `${item.product?.productName || "Unknown"} (${item.product?.sku || "N/A"})`,
+    })) || []),
+  ];
+
+  const onSubmitReceive = (data) => {
+    const quantity = Math.abs(parseInt(data.quantityChange, 10));
+
+    if (!receiveProductId) {
+      toast.error("Please select a product");
+      return;
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.error("Enter a valid quantity");
+      return;
+    }
+
+    adjustStockMutation.mutate({
+      productId: receiveProductId,
+      quantityChange: quantity,
+      reason: "PURCHASE",
+      notes: data.notes,
+      reference: data.reference,
+    });
+  };
+
+  const csvEscape = (value) => {
+    if (value === null || value === undefined) return "";
+    const str = String(value).replace(/"/g, '""');
+    return /[",\n]/.test(str) ? `"${str}"` : str;
+  };
+
+  const handleExportInventoryCsv = () => {
+    const rows = inventory?.data || [];
+    if (!rows.length) {
+      toast.error("No inventory data to export");
+      return;
+    }
+
+    const headers = [
+      "Product",
+      "SKU",
+      "Category",
+      "Quantity",
+      "Low Stock Level",
+      "Reorder Point",
+      "Supplier",
+      "Last Restocked",
+      "Status",
+    ];
+
+    const statusLabel = (item) => {
+      const qty = item.quantity;
+      const threshold = item.lowStockLevel;
+      if (qty === 0) return "Out of Stock";
+      if (qty <= threshold) return "Low Stock";
+      if (qty <= threshold * 1.5) return "Medium";
+      return "In Stock";
+    };
+
+    const lines = rows.map((item) => [
+      item.product?.productName || "",
+      item.product?.sku || "",
+      item.product?.category?.name || "",
+      item.quantity,
+      item.lowStockLevel,
+      item.reorderPoint,
+      item.product?.supplierProducts?.[0]?.supplier?.name || "N/A",
+      item.lastRestockedAt ? formatDate.standard(item.lastRestockedAt) : "Never",
+      statusLabel(item),
+    ]);
+
+    const csv = [headers, ...lines]
+      .map((line) => line.map(csvEscape).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `inventory-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const getStockStatus = (item) => {
@@ -77,13 +193,11 @@ export const InventoryPage = () => {
     if (qty <= threshold) return { variant: "red", label: "Low Stock" };
     if (qty <= threshold * 1.5) return { variant: "amber", label: "Medium" };
     return { variant: "green", label: "In Stock" };
-
   };
 
   const getProgressColor = (item) => {
     const qty = item.quantity;
     const threshold = item.lowStockLevel;
-    console.log("Item", item)
 
     if (qty <= threshold) return "bg-red-500";
     if (qty <= threshold * 1.5) return "bg-amber-500";
@@ -211,10 +325,22 @@ export const InventoryPage = () => {
         subtitle="Track and manage stock levels"
         actions={
           <>
-            <Button variant="ghost" icon={<Package size={18} />}>
+            <Button
+              variant="ghost"
+              icon={<Package size={18} />}
+              onClick={() => {
+                setIsReceiveModalOpen(true);
+                setReceiveProductId("");
+                resetReceive();
+              }}
+            >
               Receive Stock
             </Button>
-            <Button variant="ghost" icon={<Download size={18} />}>
+            <Button
+              variant="ghost"
+              icon={<Download size={18} />}
+              onClick={handleExportInventoryCsv}
+            >
               Export
             </Button>
           </>
@@ -258,6 +384,74 @@ export const InventoryPage = () => {
         />
       </main>
 
+      {/* Receive Stock Modal */}
+      <Modal
+        isOpen={isReceiveModalOpen}
+        onClose={() => {
+          setIsReceiveModalOpen(false);
+          setReceiveProductId("");
+          resetReceive();
+        }}
+        title="Receive Stock"
+        width={500}
+      >
+        <form onSubmit={handleSubmitReceive(onSubmitReceive)} className="p-6 space-y-4">
+          <Select
+            label="Product"
+            options={receiveProductOptions}
+            value={receiveProductId}
+            onChange={setReceiveProductId}
+          />
+
+          <FormInput
+            {...registerReceive("quantityChange", {
+              required: "Quantity is required",
+            })}
+            label="Quantity Received"
+            type="number"
+            placeholder="Enter quantity"
+            error={receiveErrors.quantityChange?.message}
+          />
+
+          <FormInput
+            {...registerReceive("reference")}
+            label="Reference"
+            placeholder="PO / Invoice number"
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              Notes
+            </label>
+            <textarea
+              {...registerReceive("notes")}
+              rows={3}
+              className="w-full px-4 py-2.5 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              placeholder="Additional notes..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              fullWidth
+              onClick={() => setIsReceiveModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              loading={adjustStockMutation.isLoading}
+            >
+              Receive Stock
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Stock Adjustment Modal */}
       <Modal
         isOpen={isAdjustModalOpen}
@@ -277,7 +471,7 @@ export const InventoryPage = () => {
                 {selectedProduct.quantity}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                {selectedProduct.product.name}
+                {selectedProduct.product.productName}
               </p>
             </div>
           )}

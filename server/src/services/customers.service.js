@@ -16,6 +16,13 @@ export const customersService = {
     }
     return await customersRepository.getById(id);
   },
+  getCustomerSales: async (id) => {
+    if (!id) {
+      throw new Error("Customer ID is required");
+    }
+
+    return await customersRepository.getCustomerSales(id);
+  },
   createCustomer: async (data) => {
     return await customersRepository.create(data);
   },

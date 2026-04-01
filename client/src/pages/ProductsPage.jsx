@@ -206,13 +206,17 @@ export const ProductsPage = () => {
 
     return (
       <Badge
-        variant={stock === 0 ? "red" : stock <= threshold ? "amber" : "green"}
+        variant={stock === 0 ? "red" : stock <= threshold ? "red" : stock <= threshold * 1.5 ? "amber" : "green"}
       >
-        {stock === 0
-          ? "Out of Stock"
-          : stock <= threshold
+        {
+          stock === 0
+            ? "Out of Stock"
+            : stock <= threshold
             ? "Low Stock"
-            : "In Stock"}
+            : stock <= threshold * 1.5
+            ? "Limited Stock"
+            : "In Stock"
+        }
       </Badge>
     );
   };

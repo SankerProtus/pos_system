@@ -79,25 +79,15 @@ export const inventoryController = {
         `Adjusting inventory: productId=${productId}, adjustment=${adjustment}, userId=${userId}, reason=${reason}`,
       );
       try {
-        const adjustedInventory = await inventoryService.adjustInventory(
+        const result = await inventoryService.adjustInventory(
           productId,
           adjustment,
+          userId,
+          reason,
+          notes,
+          reference,
         );
-        // Record adjustment in StockAdjustment
-        if (userId && reason) {
-          const before = adjustedInventory.quantity - adjustment;
-          await inventoryService.recordStockAdjustment({
-            inventoryId: adjustedInventory.id,
-            productId,
-            userId,
-            reason,
-            quantityBefore: before,
-            quantityChange: adjustment,
-            quantityAfter: adjustedInventory.quantity,
-            notes,
-          });
-        }
-        res.status(200).json({ data: adjustedInventory });
+        res.status(200).json({ data: result.inventory, adjustment: result.adjustment });
       } catch (error) {
         if (error.message.includes("not found")) {
           console.error("Error adjusting inventory:", error);

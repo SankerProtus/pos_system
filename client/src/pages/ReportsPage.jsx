@@ -37,7 +37,6 @@ export const ReportsPage = () => {
     },
     enabled: activeTab === 'weekly',
   });
-  console.log("Weekly Report", weeklyReport);
 
   const { data: productPerformance } = useQuery({
     queryKey: ['product-performance', dateFrom, dateTo],

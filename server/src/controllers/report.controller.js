@@ -18,9 +18,10 @@ export const reportController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
-  getWeeklyReport: async (_req, res) => {
+  getWeeklyReport: async (req, res) => {
     try {
-      const report = await reportService.getWeeklyReport();
+      const { weekStart } = req.query;
+      const report = await reportService.getWeeklyReport(weekStart);
       res.status(200).json(report);
     } catch (error) {
       console.error("Error fetching weekly report:", error);

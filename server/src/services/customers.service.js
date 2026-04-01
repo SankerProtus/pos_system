@@ -4,14 +4,17 @@ export const customersService = {
   getAllCustomers: async () => {
     return await customersRepository.getAll();
   },
-  getCustomerById: async (id) => {
-    const customer = await customersRepository.getById(id);
-
-    if (!customer) {
-      throw new Error("Customer not found");
+  searchCustomers: async (search) => {
+    if (!search) {
+      throw new Error("Search query is required");
     }
-
-    return customer;
+    return await customersRepository.searchCustomers(search);
+  },
+  getCustomerById: async (id) => {
+    if (!id) {
+      throw new Error("Customer ID is required");
+    }
+    return await customersRepository.getById(id);
   },
   createCustomer: async (data) => {
     return await customersRepository.create(data);

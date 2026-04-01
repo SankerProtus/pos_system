@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { Topbar } from '../components/layout/Topbar';
@@ -16,7 +16,8 @@ import { UserPlus, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const CustomersPage = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -25,11 +26,19 @@ export const CustomersPage = () => {
   const queryClient = useQueryClient();
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const { data: customers, isLoading } = useQuery({
-    queryKey: ['customers', { search: searchTerm }],
+    queryKey: ['customers', { search: debouncedSearchTerm }],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
+      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm);
       const response = await apiClient.get(`/customers?${params}`);
       return response.data;
     },
@@ -253,7 +262,9 @@ export const CustomersPage = () => {
         {/* Search */}
         <div className="mb-5">
           <SearchInput
-            onSearch={setSearchTerm}
+            value={searchTerm}
+            onChange={setSearchTerm}
+            onClear={() => setSearchTerm("")}
             placeholder="Search customers..."
           />
         </div>
@@ -261,7 +272,7 @@ export const CustomersPage = () => {
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={Array.isArray(customers) ? customers : customers?.data || []}
+          data={customers?.data || []}
           isLoading={isLoading}
           emptyMessage="No customers found"
         />
@@ -387,6 +398,7 @@ export const CustomersPage = () => {
                     Visits
                   </p>
                   <p className="text-xl font-bold font-mono text-emerald-400">
+                    {console.log("Selected customer visits", selectedCustomer.visitCount)}
                     {selectedCustomer.visitCount || 0}
                   </p>
                 </div>

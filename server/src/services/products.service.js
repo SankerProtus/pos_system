@@ -7,8 +7,8 @@ export const productsService = {
     }
     return await productsRepository.getProductByBarcode(barcode);
   },
-  getAllProducts: async (categoryId) => {
-    return await productsRepository.getAllProducts(categoryId);
+  getAllProducts: async ({ categoryId, search } = {}) => {
+    return await productsRepository.getAllProducts({ categoryId, search });
   },
   getProductById: async (id) => {
     if (!id) {

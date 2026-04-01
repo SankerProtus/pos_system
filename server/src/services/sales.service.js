@@ -22,31 +22,6 @@ export const salesService = {
       if (!Array.isArray(saleData.items) || saleData.items.length === 0)
         throw new Error("No items provided");
       if (!saleData.paymentMethod) throw new Error("Payment method required");
-      // Calculate subtotal
-      const subtotal =
-        Math.round(
-          saleData.items.reduce(
-            (sum, item) => sum + Number(item.price) * item.quantity,
-            0,
-          ) * 100,
-        ) / 100;
-      // Calculate discount
-      const discount =
-        Math.round((Number(saleData.discountAmount) || 0) * 100) / 100;
-      const tax =
-        Math.round(
-          saleData.items.reduce(
-            (sum, item) =>
-              sum +
-              (Number(item.price) *
-                item.quantity *
-                (Number(item.taxRate) || 0)) /
-                100,
-            0,
-          ) * 100,
-        ) / 100;
-      // Calculate total amount
-      const totalAmount = Math.round((subtotal + tax - discount) * 100) / 100;
       // Ensure userId is present
       const {
         items,
@@ -58,14 +33,18 @@ export const salesService = {
         ...rest
       } = saleData;
       if (!userId) throw new Error("User ID required for sale");
-      // Fetch product names for all items
+
+      // Fetch canonical product data for all items (authoritative pricing/tax)
       const { productsService } = await import("./products.service.js");
       const saleItemsWithNames = await Promise.all(
         items.map(async (item) => {
+          const quantity = Number(item.quantity);
+          if (!Number.isInteger(quantity) || quantity <= 0) {
+            throw new Error(`Invalid quantity for product: ${item.productId}`);
+          }
           const product = await productsService.getProductById(item.productId);
           if (!product) throw new Error(`Product not found: ${item.productId}`);
-          const unitPrice = Number(item.price);
-          const quantity = item.quantity;
+          const unitPrice = Number(product.price);
           const discount = Number(item.discount) || 0;
           const subtotal =
             Math.round((unitPrice * quantity - discount) * 100) / 100;
@@ -75,15 +54,47 @@ export const salesService = {
             unitPrice,
             quantity,
             discount,
-            taxRate: Number(item.taxRate) || 0,
+            taxRate: Number(product.taxRate) || 0,
             barcode: item.barcode,
             subtotal,
           };
         }),
       );
+
+      // Calculate totals from server-side canonical values
+      const subtotal =
+        Math.round(
+          saleItemsWithNames.reduce((sum, item) => sum + Number(item.subtotal), 0) *
+            100,
+        ) / 100;
+      const discount =
+        Math.round((Number(saleData.discountAmount) || 0) * 100) / 100;
+      const taxAmount =
+        Math.round(
+          saleItemsWithNames.reduce(
+            (sum, item) =>
+              sum +
+              (Number(item.unitPrice) * item.quantity * Number(item.taxRate)) /
+                100,
+            0,
+          ) * 100,
+        ) / 100;
+      const totalAmount = Math.round((subtotal + taxAmount - discount) * 100) / 100;
+      const normalizedAmountPaid = Math.round((Number(amountPaid) || 0) * 100) / 100;
+      if (!Number.isFinite(normalizedAmountPaid) || normalizedAmountPaid <= 0) {
+        throw new Error("Valid amount paid is required");
+      }
+      if (normalizedAmountPaid < totalAmount) {
+        throw new Error("Amount paid is less than total");
+      }
+      const changeDue = Math.round((normalizedAmountPaid - totalAmount) * 100) / 100;
+
       const salePayload = {
         ...rest,
+        status: "COMPLETED",
         subtotal,
+        discountAmount: discount,
+        taxAmount,
         totalAmount,
         user: { connect: { id: userId } },
         ...(customerId && { customer: { connect: { id: customerId } } }),
@@ -94,7 +105,8 @@ export const salesService = {
         payment: {
           create: {
             method: paymentMethod,
-            amountPaid: amountPaid,
+            amountPaid: normalizedAmountPaid,
+            changeDue,
           },
         },
       };
@@ -102,7 +114,7 @@ export const salesService = {
       const newSale = await salesRepository.createSale(salePayload);
       console.log("New sale created:", newSale);
 
-      // Generate a unique receipt number (e.g., RCP-20240601-ABCD)
+      // Generate a unique receipt number
       const today = new Date();
       const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
       const shortId = newSale.id.slice(-4).toUpperCase();
@@ -112,11 +124,11 @@ export const salesService = {
       const userName = newSale.user?.name || "";
       const customerName = newSale.customer?.name || null;
 
-      // Store info for receipt (these could be from config/env in a real app)
-      const storeName = import.meta.env.VITE_STORE_NAME || "SwiftPOS Retail";
-      console.log("Store name for receipt:", storeName);
-      const storeAddress = import.meta.env.VITE_STORE_ADDRESS || "123 Main Street, Accra";
-      const storeTaxId = import.meta.env.VITE_STORE_TAX_ID || "C0000000000";
+      // Store info for receipt
+      const storeName = process.env.VITE_STORE_NAME || "SwiftPOS Retail";
+      const storeAddress =
+        process.env.VITE_STORE_ADDRESS || "123 Main Street, Accra";
+      const storeTaxId = process.env.VITE_STORE_TAX_ID || "C0000000000";
 
       // Create the receipt using the repository
       const receipt = await salesRepository.createReceipt({
@@ -136,13 +148,20 @@ export const salesService = {
       };
     } catch (error) {
       console.error("Error creating sale:", error);
-      throw new Error("Internal server error", { cause: error });
+        const message = error?.message || error?.cause?.message || "";
+        if (
+          message.includes("Insufficient stock") ||
+          message.includes("Inventory not found")
+        ) {
+          throw new Error(message);
+        }
+        throw new Error("Internal server error", { cause: error });
     }
   },
 
-  voidSale: async (saleId) => {
+  voidSale: async (saleId, userId) => {
     try {
-      const voidedSale = await salesRepository.voidSale(saleId);
+      const voidedSale = await salesRepository.voidSale(saleId, userId);
       return voidedSale;
     } catch (error) {
       console.error("Error voiding sale:", error);

@@ -20,6 +20,7 @@ export const customersRepository = {
       },
     });
 
+
     // Attach totalSpent to each customer
     return customers.map((customer) => ({
       ...customer,
@@ -27,6 +28,23 @@ export const customersRepository = {
         (sum, sale) => sum + Number(sale.totalAmount),
         0,
       ),
+      sales: undefined,
+    }));
+  },
+  searchCustomers: async (search) => {
+    const customers = await prisma.customer.findMany({
+      where: {
+        name: { contains: search, mode: "insensitive" },
+      },
+      include: {
+        sales: { select: { totalAmount: true } }
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return customers.map((customer) => ({
+      ...customer,
+      totalSpent: customer.sales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0),
       sales: undefined,
     }));
   },

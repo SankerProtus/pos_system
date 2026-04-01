@@ -71,17 +71,19 @@ export const InventoryPage = () => {
 
   const getStockStatus = (item) => {
     const qty = item.quantity;
-    const threshold = item.lowStockThreshold;
+    const threshold = item.lowStockLevel;
 
     if (qty === 0) return { variant: "red", label: "Out of Stock" };
     if (qty <= threshold) return { variant: "red", label: "Low Stock" };
     if (qty <= threshold * 1.5) return { variant: "amber", label: "Medium" };
     return { variant: "green", label: "In Stock" };
+
   };
 
   const getProgressColor = (item) => {
     const qty = item.quantity;
-    const threshold = item.lowStockThreshold;
+    const threshold = item.lowStockLevel;
+    console.log("Item", item)
 
     if (qty <= threshold) return "bg-red-500";
     if (qty <= threshold * 1.5) return "bg-amber-500";
@@ -90,7 +92,7 @@ export const InventoryPage = () => {
 
   const totalSKUs = inventory?.data?.length || 0;
   const lowStockCount =
-    inventory?.data?.filter((item) => item.quantity <= item.lowStockThreshold)
+    inventory?.data?.filter((item) => item.quantity <= item.lowStockLevel)
       .length || 0;
   const outOfStockCount =
     inventory?.data?.filter((item) => item.quantity === 0).length || 0;
@@ -123,9 +125,10 @@ export const InventoryPage = () => {
           </p>
           <div className="w-full bg-[#0f172a] rounded-full h-2">
             <div
-              className={`h-2 rounded-full ${getProgressColor(row)}`}
+              className={`h-1.5 rounded-full ${getProgressColor(row)}`}
               style={{
-                width: `${Math.min(100, (row.quantity / row.reorderQuantity) * 100)}%`,
+                width: `${Math.min(100, (row.quantity / row.reorderPoint
+                ) * 100)}%`,
               }}
             ></div>
           </div>
@@ -147,7 +150,11 @@ export const InventoryPage = () => {
       header: "Status",
       render: (row) => {
         const status = getStockStatus(row);
-        return <Badge variant={status.variant}>{status.label}</Badge>;
+        return (
+          <span style={{ minWidth: 105, display: "inline-block" }}>
+            <Badge variant={status.variant}>{status.label}</Badge>
+          </span>
+        );
       },
     },
     {

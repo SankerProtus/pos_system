@@ -20,8 +20,67 @@ export const salesRepository = {
     });
   },
   createSale: async (saleData) => {
-    return await prisma.sale.create({
-      data: saleData,
+    const saleItems = saleData?.saleItems?.create || [];
+    const userId = saleData?.user?.connect?.id || null;
+
+    return await prisma.$transaction(async (tx) => {
+      // Validate inventory availability for each sale line before creating sale
+      for (const item of saleItems) {
+        const inventory = await tx.inventory.findUnique({
+          where: { productId: item.productId },
+        });
+
+        if (!inventory) {
+          throw new Error(`Inventory not found for product: ${item.productId}`);
+        }
+
+        if (inventory.quantity < item.quantity) {
+          throw new Error(
+            `Insufficient stock for product ${item.productName || item.productId}`,
+          );
+        }
+      }
+
+      const newSale = await tx.sale.create({
+        data: saleData,
+        include: {
+          user: true,
+          customer: true,
+          saleItems: true,
+          payment: true,
+        },
+      });
+
+      // Apply inventory movements and audit records after sale creation
+      for (const item of saleItems) {
+        const inventory = await tx.inventory.findUnique({
+          where: { productId: item.productId },
+        });
+        const quantityBefore = inventory.quantity;
+        const quantityAfter = quantityBefore - item.quantity;
+
+        await tx.inventory.update({
+          where: { id: inventory.id },
+          data: { quantity: quantityAfter },
+        });
+
+        if (userId) {
+          await tx.stockAdjustment.create({
+            data: {
+              inventoryId: inventory.id,
+              productId: item.productId,
+              userId,
+              reason: "SALE",
+              quantityBefore,
+              quantityChange: -item.quantity,
+              quantityAfter,
+              referenceId: newSale.id,
+            },
+          });
+        }
+      }
+
+      return newSale;
     });
   },
   getSalesByDate: async (date) => {
@@ -61,10 +120,56 @@ export const salesRepository = {
       take: limit ? parseInt(limit) : undefined,
     });
   },
-  voidSale: async (saleId) => {
-    return await prisma.sale.update({
-      where: { id: saleId },
-      data: { status: "VOIDED" },
+  voidSale: async (saleId, actorUserId) => {
+    return await prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.findUnique({
+        where: { id: saleId },
+        include: { saleItems: true },
+      });
+
+      if (!sale) {
+        throw new Error("Sale not found");
+      }
+
+      if (sale.status === "VOIDED") {
+        throw new Error("Sale is already voided");
+      }
+
+      for (const item of sale.saleItems) {
+        const inventory = await tx.inventory.findUnique({
+          where: { productId: item.productId },
+        });
+        if (!inventory) continue;
+
+        const quantityBefore = inventory.quantity;
+        const quantityAfter = quantityBefore + item.quantity;
+
+        await tx.inventory.update({
+          where: { id: inventory.id },
+          data: { quantity: quantityAfter },
+        });
+
+        const adjustmentUserId = actorUserId || sale.userId || null;
+        if (adjustmentUserId) {
+          await tx.stockAdjustment.create({
+            data: {
+              inventoryId: inventory.id,
+              productId: item.productId,
+              userId: adjustmentUserId,
+              reason: "VOID",
+              quantityBefore,
+              quantityChange: item.quantity,
+              quantityAfter,
+              referenceId: sale.id,
+            },
+          });
+        }
+      }
+
+      return await tx.sale.update({
+        where: { id: saleId },
+        data: { status: "VOIDED" },
+      });
     });
   },
   createReceipt: async (receiptData) => {

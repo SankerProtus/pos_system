@@ -98,16 +98,25 @@ export const salesController = {
       };
       res.status(201).json({ data: mappedSale });
     } catch (error) {
-      console.error("Error creating sale:", error);
-      res
-        .status(500)
-        .json({ error: "Internal server error, " + error.message });
+        console.error("Error creating sale:", error);
+        const message = error?.message || error?.cause?.message || "";
+        if (
+          message.includes("Insufficient stock") ||
+          message.includes("Inventory not found")
+        ) {
+          return res.status(400).json({ error: message });
+        }
+        res.status(500).json({ error: "Internal server error, " + message });
     }
   },
   voidSale: async (req, res) => {
     try {
       const saleId = req.params.id;
-      const voidedSale = await salesService.voidSale(saleId);
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized: User ID missing" });
+      }
+      const voidedSale = await salesService.voidSale(saleId, userId);
       res.status(200).json({ data: voidedSale });
     } catch (error) {
       console.error("Error voiding sale:", error);

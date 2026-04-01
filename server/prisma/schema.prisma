@@ -34,9 +34,11 @@ enum SaleStatus {
 // Reason codes for manual inventory movements.
 enum StockAdjustmentReason {
   PURCHASE       // New stock received from supplier
+  SALE           // Stock deducted due to completed sale
   DAMAGE         // Damaged / unsellable goods removed
   THEFT          // Shrinkage / loss
   CORRECTION     // Data-entry error fix
+  VOID           // Stock restored when sale is voided
   RETURN         // Customer return added back to stock
   OPENING_STOCK  // Initial stock when product is created
 }

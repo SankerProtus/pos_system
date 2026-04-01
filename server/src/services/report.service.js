@@ -32,9 +32,9 @@ export const reportService = {
       throw new Error("Internal server error");
     }
   },
-  getWeeklyReport: async () => {
+  getWeeklyReport: async (weekStart) => {
     try {
-      const report = await reportRepository.getWeeklyReport();
+      const report = await reportRepository.getWeeklyReport(weekStart);
       return report;
     } catch (error) {
       console.error("Error fetching weekly report:", error);

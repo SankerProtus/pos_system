@@ -65,9 +65,20 @@ export const reportRepository = {
           productMap[item.productId].quantity += item.quantity;
         }
       }
-      const topProducts = Object.values(productMap).sort(
+      const topProductsBase = Object.values(productMap).sort(
         (a, b) => b.revenue - a.revenue,
       );
+      const totalTopRevenue = topProductsBase.reduce(
+        (sum, product) => sum + Number(product.revenue || 0),
+        0,
+      );
+      const topProducts = topProductsBase.map((product) => ({
+        ...product,
+        revenueShare:
+          totalTopRevenue > 0
+            ? (Number(product.revenue || 0) / totalTopRevenue) * 100
+            : 0,
+      }));
       // Payment method breakdown
       const paymentMethodBreakdown = [];
       const paymentMap = {};
@@ -246,12 +257,14 @@ export const reportRepository = {
       throw new Error("Internal server error");
     }
   },
-  getWeeklyReport: async () => {
+  getWeeklyReport: async (weekStart) => {
     try {
-      // Aggregate sales for the current week
+      // Aggregate sales for requested week, defaults to current week
       const now = new Date();
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
+      const startOfWeek = weekStart ? new Date(weekStart) : new Date(now);
+      if (Number.isNaN(startOfWeek.getTime())) {
+        throw new Error("Invalid weekStart date");
+      }
       startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 7);

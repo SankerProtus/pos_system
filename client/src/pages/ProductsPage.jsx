@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Topbar } from "../components/layout/Topbar";
@@ -44,6 +44,7 @@ export const ProductsPage = () => {
     setImagePreview(e.target.value);
   };
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -62,14 +63,22 @@ export const ProductsPage = () => {
     formState: { errors },
   } = useForm();
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const { data: products, isLoading } = useQuery({
     queryKey: [
       "products",
-      { search: searchTerm, categoryId: selectedCategory },
+      { search: debouncedSearchTerm, categoryId: selectedCategory },
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (searchTerm) params.append("search", searchTerm);
+      if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
       if (selectedCategory) params.append("categoryId", selectedCategory);
       const response = await apiClient.get(`/products?${params}`);
       return response.data;
@@ -193,15 +202,19 @@ export const ProductsPage = () => {
 
   const getStockBadge = (product) => {
     const stock = product.inventory?.quantity || 0;
-    const threshold = product.inventory?.lowStockThreshold || 10;
+    const threshold = product.inventory?.lowStockLevel || 10;
 
-    if (stock <= threshold) {
-      return <Badge variant="red">Low Stock</Badge>;
-    } else if (stock <= threshold * 1.5) {
-      return <Badge variant="amber">Medium</Badge>;
-    } else {
-      return <Badge variant="green">In Stock</Badge>;
-    }
+    return (
+      <Badge
+        variant={stock === 0 ? "red" : stock <= threshold ? "amber" : "green"}
+      >
+        {stock === 0
+          ? "Out of Stock"
+          : stock <= threshold
+            ? "Low Stock"
+            : "In Stock"}
+      </Badge>
+    );
   };
 
   const columns = [
@@ -370,7 +383,9 @@ export const ProductsPage = () => {
         <div className="flex gap-2 mb-5 items-center">
           <div className="flex-1 min-w-70">
             <SearchInput
-              onSearch={setSearchTerm}
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onClear={() => setSearchTerm("")}
               placeholder="Search products..."
             />
           </div>
@@ -452,7 +467,7 @@ export const ProductsPage = () => {
                 accept="image/*"
                 onChange={handleImageFileChange}
                 className="block mb-2 text-slate-100 bg-[#1e293b] border border-amber-500 rounded px-3 py-2"
-                style={{ color: "#f8fafc" }} // lighter text
+                style={{ color: "#f8fafc" }}
               />
             ) : (
               <input
@@ -461,7 +476,7 @@ export const ProductsPage = () => {
                 onChange={handleImageUrlChange}
                 placeholder="Paste image URL..."
                 className="block w-full mb-2 px-3 py-2 rounded border border-amber-500 bg-[#1e293b] text-slate-100"
-                style={{ color: "#f8fafc" }} // lighter text
+                style={{ color: "#f8fafc" }}
               />
             )}
             {imagePreview && (
@@ -584,7 +599,7 @@ export const ProductsPage = () => {
               label="Low Stock Alert At"
               type="number"
               placeholder="10"
-              error={errors.lowStockThreshold?.message}
+              error={errors.lowStockLevel?.message}
             />
             <FormInput
               {...register("description")}

@@ -6,14 +6,14 @@ const router = express.Router();
 // Barcode lookup
 router.get("/barcode/:barcode", productsController.getProductByBarcode);
 
+// Search products by name or SKU
+router.get("/search", productsController.searchProducts);
+
 // Get all products
 router.get("/", productsController.getAllProducts);
 
 // Get a product by ID
 router.get("/:id", productsController.getProductById);
-
-// Search products by name or SKU
-router.get("/search", productsController.searchProducts);
 
 // Create a new product
 router.post("/", productsController.createProduct);

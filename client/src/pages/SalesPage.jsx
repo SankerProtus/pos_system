@@ -47,6 +47,8 @@ export const SalesPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["sales"]);
+      queryClient.invalidateQueries(["products"]);
+      queryClient.invalidateQueries(["inventory"]);
       toast.success("Sale voided successfully");
       setIsVoidDialogOpen(false);
       setVoidingSaleId(null);

@@ -296,7 +296,7 @@ export const authController = {
   },
 
   /**
-   * Google OAuth - Not implemented
+   * Google OAuth Controller
    * GET /api/auth/google
    */
   googleAuthController: passport.authenticate("google", {
@@ -305,7 +305,7 @@ export const authController = {
   }),
 
   /**
-   * Google OAuth Callback - Not implemented
+   * Google OAuth Callback
    * GET /api/auth/google/callback
    */
   googleAuthCallback: async (req, res, next) => {
@@ -313,7 +313,7 @@ export const authController = {
       "google",
       { session: false },
       async (err, user, info) => {
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+        const frontendUrl = process.env.CLIENT_URL || "http://localhost:5174";
 
         if (err) {
           logger.error("Google authentication error:", err.message || err);

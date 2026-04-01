@@ -13,7 +13,7 @@ export const Badge = ({ children, variant = "muted", className }) => {
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-medium border",
+        "inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-sans font-medium border",
         variantStyles[variant],
         className,
       )}

@@ -5,8 +5,8 @@ import { emailService } from "../email/services/email.service.js";
 import { logger } from "../utils/logger.js";
 
 const SALT_ROUNDS = 12;
-const VERIFICATION_CODE_EXPIRY = 15 * 60 * 1000; // 15 minutes
-const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
+const VERIFICATION_CODE_EXPIRY = 15 * 60 * 1000;
+const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Authentication Service Layer

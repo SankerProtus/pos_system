@@ -35,8 +35,20 @@ export const productsRepository = {
       },
     });
   },
-  getAllProducts: async (categoryId) => {
-    const where = categoryId ? { categoryId } : {};
+  getAllProducts: async ({ categoryId, search } = {}) => {
+    const where = {
+      ...(categoryId ? { categoryId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { productName: { contains: search, mode: "insensitive" } },
+              { sku: { contains: search, mode: "insensitive" } },
+              { barcode: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
+  
     return await prisma.product.findMany({
       where,
       orderBy: { createdAt: "desc" },

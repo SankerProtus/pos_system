@@ -28,7 +28,6 @@ export const ReportsPage = () => {
     },
     enabled: activeTab === 'daily',
   });
-  { console.log("Daily Report Data:", dailyReport) }
 
   const { data: weeklyReport } = useQuery({
     queryKey: ['weekly-report', weekStart],
@@ -38,6 +37,7 @@ export const ReportsPage = () => {
     },
     enabled: activeTab === 'weekly',
   });
+  console.log("Weekly Report", weeklyReport);
 
   const { data: productPerformance } = useQuery({
     queryKey: ['product-performance', dateFrom, dateTo],
@@ -176,8 +176,11 @@ export const ReportsPage = () => {
       key: 'performance',
       header: 'Performance',
       render: (row) => {
-        const avgRevenue = cashierReport?.reduce((sum, c) => sum + c.revenue, 0) / cashierReport.length;
-        const performance = row.revenue >= avgRevenue ? 'above' : 'below';
+        const count = Array.isArray(cashierReport) ? cashierReport.length : 0;
+        const avgRevenue = count
+          ? cashierReport.reduce((sum, c) => sum + Number(c.totalRevenue || 0), 0) / count
+          : 0;
+        const performance = Number(row.totalRevenue || 0) >= avgRevenue ? 'above' : 'below';
         return (
           <Badge variant={performance === 'above' ? 'green' : 'amber'}>
             {performance === 'above' ? '↑ Above Avg' : '↓ Below Avg'}

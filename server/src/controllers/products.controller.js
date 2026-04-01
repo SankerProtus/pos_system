@@ -4,13 +4,29 @@ import { logger } from "../utils/logger.js";
 export const productsController = {
   getAllProducts: async (req, res) => {
     try {
-      const { categoryId } = req.query;
-      const products = await productsService.getAllProducts(categoryId);
+      const { categoryId, search } = req.query;
+      const products = await productsService.getAllProducts({
+        categoryId,
+        search,
+      });
       res.status(200).json({ data: products });
     } catch (error) {
       console.error("Error fetching products:", error);
       logger.error(`Error fetching products: ${error.message}`);
       res.status(500).json({ message: "Failed to fetch products" });
+    }
+  },
+
+  searchProducts: async (req, res) => {
+    const { search } = req.query;
+
+    try {
+      const products = await productsService.searchProducts(search);
+      res.status(200).json({ data: products });
+    } catch (error) {
+      console.error("Error searching products:", error);
+      logger.error(`Error searching products: ${error.message}`);
+      res.status(500).json({ message: "Failed to search products" });
     }
   },
 
@@ -26,20 +42,6 @@ export const productsController = {
       console.error("Error fetching product by ID:", error);
       logger.error(`Error fetching product by ID: ${error.message}`);
       res.status(500).json({ message: "Failed to fetch product" });
-    }
-  },
-
-  searchProducts: async (req, res) => {
-    const { search } = req.query;
-    console.log("Search query:", search);
-
-    try {
-      const products = await productsService.searchProducts(search);
-      res.status(200).json({ data: products });
-    } catch (error) {
-      console.error("Error searching products:", error);
-      logger.error(`Error searching products: ${error.message}`);
-      res.status(500).json({ message: "Failed to search products" });
     }
   },
 

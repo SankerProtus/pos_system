@@ -4,6 +4,11 @@ import { logger } from "../utils/logger.js";
 export const customersController = {
   getAllCustomers: async (req, res) => {
     try {
+      const { search } = req.query;
+      if (search) {
+        const customers = await customersService.searchCustomers(search);
+        return res.status(200).json({ data: customers });
+      }
       const customers = await customersService.getAllCustomers();
       res.status(200).json({ data: customers });
     } catch (error) {

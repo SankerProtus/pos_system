@@ -11,6 +11,7 @@ import { productsRouter } from "./src/routes/products.routes.js";
 import { categoriesRouter } from "./src/routes/categories.routes.js";
 import { inventoryRouter } from "./src/routes/inventory.routes.js";
 import { posRouter } from "./src/routes/pos.routes.js";
+import { reportRoutes } from "./src/routes/report.routes.js";
 import { settingsRouter } from "./src/routes/settings.routes.js";
 import passport from "./src/config/PassportConfig.js";
 import { setupTrustProxy } from "./src/utils/rateLimiter.js";
@@ -41,6 +42,7 @@ const corsOptions = {
   credentials: true,
 };
 
+// Middlewares
 app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
@@ -52,7 +54,6 @@ app.get("/health-check", (req, res) => {
 });
 
 // Routes
-import { reportRoutes } from "./src/routes/report.routes.js";
 app.use("/api/auth", authRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/users", usersRouter);

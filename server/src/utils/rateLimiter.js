@@ -7,11 +7,11 @@ function getRetryAfterSeconds(windowMs, currentTime, resetTime) {
 
 // General Auth Rate Limiter
 export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res, next, options) => {
+  handler: (_req, res, _next, options) => {
     const now = Date.now();
     const resetTime = options.resetTime ? options.resetTime.getTime() : now + options.windowMs;
     const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);
@@ -26,11 +26,11 @@ export const authRateLimiter = rateLimit({
 
 // Login Rate Limiter
 export const loginRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res, next, options) => {
+  handler: (_req, res, _next, options) => {
     const now = Date.now();
     const resetTime = options.resetTime ? options.resetTime.getTime() : now + options.windowMs;
     const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);

@@ -70,16 +70,20 @@ export const POSPage = () => {
       const response = await apiClient.post("/sales", saleData);
       return response.data;
     },
-    onSuccess: (data) => {
-      setCompletedSale(data);
+    onSuccess: (response) => {
+      // Backend returns payload as { data: mappedSale }
+      setCompletedSale(response?.data || null);
       setIsPaymentModalOpen(false);
       setIsReceiptModalOpen(true);
       queryClient.invalidateQueries(["dashboard-daily"]);
       queryClient.invalidateQueries(["dashboard-sales"]);
+      queryClient.invalidateQueries(["products"]);
+      queryClient.invalidateQueries(["inventory"]);
       toast.success("Sale completed successfully!");
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || "Failed to complete sale");
+      toast.error(error?.response?.data?.message ||
+      error?.response?.data?.error || "Failed to complete sale");
     },
   });
 
@@ -89,11 +93,18 @@ export const POSPage = () => {
         const response = await apiClient.get(`/products/barcode/${barcode}`);
         addItem(response.data);
         setBarcode("");
+        setSearchTerm("");
         toast.success("Product added to cart");
       } catch (error) {
         toast.error("Product not found");
       }
     }
+  };
+
+  const handleScannerInputChange = (e) => {
+    const value = e.target.value;
+    setBarcode(value);
+    setSearchTerm(value.trim());
   };
 
   // Debounce Charge button
@@ -114,7 +125,13 @@ export const POSPage = () => {
 
   const handleConfirmPayment = () => {
     const total = Math.round(grandTotal(discount) * 100) / 100;
-    const paid = Math.round(parseFloat(amountPaid) * 100) / 100;
+    const parsedPaid = parseFloat(amountPaid);
+    const paid = Math.round(parsedPaid * 100) / 100;
+
+    if (!Number.isFinite(parsedPaid) || paid <= 0) {
+      toast.error("Enter a valid amount tendered");
+      return;
+    }
 
     if (paid < total) {
       toast.error("Amount paid is less than total");
@@ -171,7 +188,7 @@ export const POSPage = () => {
                 ref={barcodeInputRef}
                 type="text"
                 value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
+                onChange={handleScannerInputChange}
                 onKeyDown={handleBarcodeSearch}
                 placeholder="Scan barcode or type to search..."
                 className="w-full pl-10 pr-4 py-3 bg-[#0a1628] border-2 border-amber-500/50 text-slate-100 rounded-lg font-mono focus:outline-none focus:border-amber-500"
@@ -216,7 +233,7 @@ export const POSPage = () => {
                   className="bg-[#141d2e] border border-[#1e2d45] rounded-xl p-4 cursor-pointer hover:border-indigo-500 transition"
                 >
                   <h4 className="text-sm font-semibold text-slate-100 mb-1 line-clamp-2">
-                    {product.name}
+                    {product.productName || product.name}
                   </h4>
                   <p className="text-xs text-slate-500 mb-2">
                     {product.category?.name}

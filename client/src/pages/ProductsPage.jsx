@@ -206,17 +206,23 @@ export const ProductsPage = () => {
 
     return (
       <Badge
-        variant={stock === 0 ? "red" : stock <= threshold ? "red" : stock <= threshold * 1.5 ? "amber" : "green"}
-      >
-        {
+        variant={
           stock === 0
-            ? "Out of Stock"
+            ? "red"
             : stock <= threshold
+              ? "red"
+              : stock <= threshold * 1.5
+                ? "amber"
+                : "green"
+        }
+      >
+        {stock === 0
+          ? "Out of Stock"
+          : stock <= threshold
             ? "Low Stock"
             : stock <= threshold * 1.5
-            ? "Limited Stock"
-            : "In Stock"
-        }
+              ? "Limited Stock"
+              : "In Stock"}
       </Badge>
     );
   };
@@ -260,7 +266,7 @@ export const ProductsPage = () => {
       header: "Product Name",
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-100">{row.productName}</p>
+          <p className="font-semibold text-slate-100">{row.productName}</p>
           <p className="text-xs text-slate-500">{row.category?.name}</p>
         </div>
       ),
@@ -268,16 +274,11 @@ export const ProductsPage = () => {
     {
       key: "sku",
       header: "SKU",
-      render: (row) => (
-        <span className="font-mono text-slate-300">{row.sku}</span>
-      ),
     },
     {
       key: "barcode",
       header: "Barcode",
-      render: (row) => (
-        <span className="font-mono text-slate-300">{row.barcode}</span>
-      ),
+      render: (row) => <span className="tabular-nums">{row.barcode}</span>,
     },
     {
       key: "price",
@@ -414,6 +415,7 @@ export const ProductsPage = () => {
           data={products?.data || []}
           isLoading={isLoading}
           emptyMessage="No products found"
+          cellClassName="whitespace-nowrap px-4 py-3 text-sm text-slate-300"
         />
       </main>
 

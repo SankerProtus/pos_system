@@ -21,7 +21,6 @@ export const Receipt = forwardRef(
       <div
         ref={ref}
         className="bg-white text-black font-mono p-8 max-w-[80mm] mx-auto"
-        style={{ fontFamily: "JetBrains Mono, monospace" }}
       >
         {/* Header */}
         <div className="text-center mb-4">

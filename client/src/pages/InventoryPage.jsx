@@ -11,7 +11,7 @@ import { FormInput } from "../components/common/FormInput";
 import { Badge } from "../components/common/Badge";
 import { apiClient } from "../api/axios";
 import { formatDate } from "../utils/formatDate";
-import { Package, Download } from "lucide-react";
+import { Package, Download, Search } from "lucide-react";
 import toast from "react-hot-toast";
 
 export const InventoryPage = () => {
@@ -20,6 +20,7 @@ export const InventoryPage = () => {
   const [adjustmentReason, setAdjustmentReason] = useState("PURCHASE");
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [receiveProductId, setReceiveProductId] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const queryClient = useQueryClient();
   const {
@@ -213,6 +214,23 @@ export const InventoryPage = () => {
   const totalUnits =
     inventory?.data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
+  const inventoryRows = inventory?.data || [];
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredInventory = !normalizedSearch
+    ? inventoryRows
+    : inventoryRows.filter((item) => {
+        const searchableFields = [
+          item.product?.productName,
+          item.product?.sku,
+          item.product?.category?.name,
+          item.product?.supplierProducts?.[0]?.supplier?.name,
+        ];
+
+        return searchableFields.some((field) =>
+          (field || "").toLowerCase().includes(normalizedSearch)
+        );
+      });
+
   const columns = [
     {
       key: "product",
@@ -375,12 +393,37 @@ export const InventoryPage = () => {
           />
         </div>
 
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="w-full md:max-w-md">
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by product, SKU, category, or supplier"
+                className="w-full rounded-lg border border-[#263548] bg-[#0a1628] py-2.5 pl-10 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400">
+            Showing {filteredInventory.length} of {inventoryRows.length} items
+          </p>
+        </div>
+
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={inventory?.data || []}
+          data={filteredInventory}
           isLoading={isLoading}
-          emptyMessage="No inventory items found"
+          emptyMessage={
+            normalizedSearch
+              ? "No inventory items match your search"
+              : "No inventory items found"
+          }
         />
       </main>
 

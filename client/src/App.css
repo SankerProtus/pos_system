@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @layer base {
@@ -106,13 +106,17 @@
     body {
         background-color: hsl(var(--background));
         color: hsl(var(--foreground));
-        font-family: 'Inter', system-ui, sans-serif;
+        font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
 }
 
 @layer utilities {
+    .font-mono {
+        font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
     .pos-scrollbar::-webkit-scrollbar {
         width: 6px;
     }

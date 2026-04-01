@@ -12,6 +12,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { formatDate } from "../utils/formatDate";
 import { Download } from 'lucide-react';
 import { cn } from '../utils/cn';
+import toast from 'react-hot-toast';
 
 export const ReportsPage = () => {
   const [activeTab, setActiveTab] = useState('daily');
@@ -89,6 +90,155 @@ export const ReportsPage = () => {
       value: day.revenue,
     })) || [];
 
+  const csvEscape = (value) => {
+    if (value === null || value === undefined) return '';
+    const str = String(value).replace(/"/g, '""');
+    return /[",\n]/.test(str) ? `"${str}"` : str;
+  };
+
+  const downloadCsv = (headers, rows, filenamePrefix) => {
+    const csv = [headers, ...rows]
+      .map((line) => line.map(csvEscape).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `${filenamePrefix}-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportReport = () => {
+    if (activeTab === 'daily') {
+      const report = dailyReport;
+      if (!report) {
+        toast.error('No daily report data to export');
+        return;
+      }
+
+      const rows = [
+        ['Report Date', date],
+        ['Total Revenue', Number(report.totalRevenue || 0).toFixed(2)],
+        ['Transactions', report.totalTransactions || 0],
+        ['Items Sold', report.totalItemsSold || 0],
+        ['Gross Profit', Number(report.grossProfit || 0).toFixed(2)],
+      ];
+
+      if (Array.isArray(report.hourlySales) && report.hourlySales.length) {
+        rows.push([]);
+        rows.push(['Hourly Sales']);
+        rows.push(['Hour', 'Revenue', 'Transactions']);
+        report.hourlySales.forEach((item) => {
+          rows.push([
+            `${item.hour}:00`,
+            Number(item.revenue || 0).toFixed(2),
+            item.transactions || 0,
+          ]);
+        });
+      }
+
+      if (
+        Array.isArray(report.paymentMethodBreakdown) &&
+        report.paymentMethodBreakdown.length
+      ) {
+        rows.push([]);
+        rows.push(['Payment Method Breakdown']);
+        rows.push(['Method', 'Amount', 'Count']);
+        report.paymentMethodBreakdown.forEach((item) => {
+          rows.push([
+            item.method || 'UNKNOWN',
+            Number(item.amount || 0).toFixed(2),
+            item.count || 0,
+          ]);
+        });
+      }
+
+      downloadCsv(['Metric', 'Value', 'Extra'], rows, 'daily-report');
+      return;
+    }
+
+    if (activeTab === 'weekly') {
+      const report = weeklyReport;
+      if (!report) {
+        toast.error('No weekly report data to export');
+        return;
+      }
+
+      const rows = [
+        ['Week Start', weekStart],
+        ['Total Revenue', Number(report.totalRevenue || 0).toFixed(2)],
+        ['Previous Week Revenue', Number(report.previousWeekRevenue || 0).toFixed(2)],
+        ['Transactions', report.totalTransactions || 0],
+      ];
+
+      if (Array.isArray(report.days) && report.days.length) {
+        rows.push([]);
+        rows.push(['Daily Trend']);
+        rows.push(['Day', 'Revenue', 'Transactions']);
+        report.days.forEach((day) => {
+          rows.push([
+            day.label || '',
+            Number(day.revenue || 0).toFixed(2),
+            day.transactions || 0,
+          ]);
+        });
+      }
+
+      downloadCsv(['Metric', 'Value', 'Extra'], rows, 'weekly-report');
+      return;
+    }
+
+    if (activeTab === 'products') {
+      const rows = productPerformance || [];
+      if (!rows.length) {
+        toast.error('No product performance data to export');
+        return;
+      }
+
+      downloadCsv(
+        ['Product', 'Units Sold', 'Revenue', 'Avg Price', 'Revenue Share %'],
+        rows.map((row) => [
+          row.name || '',
+          row.unitsSold || 0,
+          Number(row.revenue || 0).toFixed(2),
+          Number(row.avgPrice || 0).toFixed(2),
+          Number(row.revenueShare || 0).toFixed(2),
+        ]),
+        'product-performance-report',
+      );
+      return;
+    }
+
+    if (activeTab === 'cashiers') {
+      const rows = cashierReport || [];
+      if (!rows.length) {
+        toast.error('No cashier report data to export');
+        return;
+      }
+
+      downloadCsv(
+        ['Cashier', 'Role', 'Transactions', 'Revenue', 'Avg Sale', 'Peak Hour'],
+        rows.map((row) => [
+          row.cashier?.name || '',
+          row.cashier?.role || '',
+          row.totalSales || 0,
+          Number(row.totalRevenue || 0).toFixed(2),
+          Number(row.avgSaleValue || 0).toFixed(2),
+          row.topHour || '',
+        ]),
+        'cashier-report',
+      );
+      return;
+    }
+
+    toast.error('No export handler for this report tab');
+  };
+
   const productColumns = [
     {
       key: 'rank',
@@ -142,7 +292,7 @@ export const ReportsPage = () => {
       header: 'Cashier',
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-100">{row.cashier.name}</p>
+          <p className="font-medium text-slate-100 mb-1">{row.cashier.name}</p>
           <Badge variant="indigo">{row.cashier.role}</Badge>
         </div>
       ),
@@ -181,9 +331,11 @@ export const ReportsPage = () => {
           : 0;
         const performance = Number(row.totalRevenue || 0) >= avgRevenue ? 'above' : 'below';
         return (
-          <Badge variant={performance === 'above' ? 'green' : 'amber'}>
-            {performance === 'above' ? '↑ Above Avg' : '↓ Below Avg'}
-          </Badge>
+          <span style={{ minWidth: 105, display: "inline-block" }}>
+            <Badge variant={performance === "above" ? "green" : "amber"}>
+              {performance === "above" ? "↑ Above Avg" : "↓ Below Avg"}
+            </Badge>
+          </span>
         );
       },
     },
@@ -195,7 +347,11 @@ export const ReportsPage = () => {
         title="Reports & Analytics"
         subtitle="View detailed insights and analytics"
         actions={
-          <Button variant="ghost" icon={<Download size={18} />}>
+          <Button
+            variant="ghost"
+            icon={<Download size={18} />}
+            onClick={handleExportReport}
+          >
             Export Report
           </Button>
         }

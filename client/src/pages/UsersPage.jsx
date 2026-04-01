@@ -154,9 +154,14 @@ export const UsersPage = () => {
           <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-semibold">
             {row.name.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <p className="font-medium text-slate-100">{row.name}</p>
-            <p className="text-xs text-slate-500">{row.email}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-100 truncate">{row.name}</p>
+            <p
+              className="text-sm text-slate-400 truncate leading-tight"
+              title={row.email}
+            >
+              {row.email}
+            </p>
           </div>
         </div>
       ),
@@ -264,6 +269,7 @@ export const UsersPage = () => {
           data={users || []}
           isLoading={isLoading}
           emptyMessage="No users found"
+          cellClassName="whitespace-nowrap px-4 py-3 text-sm text-slate-300"
         />
       </main>
 

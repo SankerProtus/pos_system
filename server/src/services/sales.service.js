@@ -5,7 +5,14 @@ export const salesService = {
     try {
       const limit = data?.limit;
       const status = data?.status;
-      const sales = await salesRepository.getAllSales({ limit, status });
+      const from = data?.from;
+      const to = data?.to;
+      const sales = await salesRepository.getAllSales({
+        limit,
+        status,
+        from,
+        to,
+      });
       // Map paymentMethod from payment relation
       return sales.map((sale) => ({
         ...sale,
@@ -64,8 +71,10 @@ export const salesService = {
       // Calculate totals from server-side canonical values
       const subtotal =
         Math.round(
-          saleItemsWithNames.reduce((sum, item) => sum + Number(item.subtotal), 0) *
-            100,
+          saleItemsWithNames.reduce(
+            (sum, item) => sum + Number(item.subtotal),
+            0,
+          ) * 100,
         ) / 100;
       const discount =
         Math.round((Number(saleData.discountAmount) || 0) * 100) / 100;
@@ -79,15 +88,18 @@ export const salesService = {
             0,
           ) * 100,
         ) / 100;
-      const totalAmount = Math.round((subtotal + taxAmount - discount) * 100) / 100;
-      const normalizedAmountPaid = Math.round((Number(amountPaid) || 0) * 100) / 100;
+      const totalAmount =
+        Math.round((subtotal + taxAmount - discount) * 100) / 100;
+      const normalizedAmountPaid =
+        Math.round((Number(amountPaid) || 0) * 100) / 100;
       if (!Number.isFinite(normalizedAmountPaid) || normalizedAmountPaid <= 0) {
         throw new Error("Valid amount paid is required");
       }
       if (normalizedAmountPaid < totalAmount) {
         throw new Error("Amount paid is less than total");
       }
-      const changeDue = Math.round((normalizedAmountPaid - totalAmount) * 100) / 100;
+      const changeDue =
+        Math.round((normalizedAmountPaid - totalAmount) * 100) / 100;
 
       const salePayload = {
         ...rest,
@@ -125,9 +137,9 @@ export const salesService = {
       const customerName = newSale.customer?.name || null;
 
       // Store info for receipt
-        const storeName = process.env.STORE_NAME || "SwiftPOS Retail";
-        const storeAddress = process.env.STORE_ADDRESS || "123 Main Street";
-        const storeTaxId = process.env.STORE_TAX_ID || "TAX-123456";
+      const storeName = process.env.STORE_NAME || "SwiftPOS Retail";
+      const storeAddress = process.env.STORE_ADDRESS || "123 Main Street";
+      const storeTaxId = process.env.STORE_TAX_ID || "TAX-123456";
 
       // Create the receipt using the repository
       const receipt = await salesRepository.createReceipt({
@@ -153,14 +165,14 @@ export const salesService = {
       };
     } catch (error) {
       console.error("Error creating sale:", error);
-        const message = error?.message || error?.cause?.message || "";
-        if (
-          message.includes("Insufficient stock") ||
-          message.includes("Inventory not found")
-        ) {
-          throw new Error(message);
-        }
-        throw new Error("Internal server error", { cause: error });
+      const message = error?.message || error?.cause?.message || "";
+      if (
+        message.includes("Insufficient stock") ||
+        message.includes("Inventory not found")
+      ) {
+        throw new Error(message);
+      }
+      throw new Error("Internal server error", { cause: error });
     }
   },
 

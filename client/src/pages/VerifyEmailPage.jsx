@@ -100,10 +100,6 @@ export const VerifyEmailPage = () => {
     setError("");
 
     try {
-      console.log("Sending verification:", {
-        email: emailFromUrl,
-        code: verificationCode,
-      });
 
       await authApi.verifyEmail({
         email: emailFromUrl,

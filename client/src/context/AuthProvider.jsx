@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
           token,
           refreshToken,
         };
-      } catch (error) {
+      } catch {
         // If parsing fails, clear invalid data
         localStorage.removeItem(STORAGE_KEYS.TOKEN);
         localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
         user,
       }));
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-    } catch (error) {
+    } catch {
       // Optionally handle error
     }
   };

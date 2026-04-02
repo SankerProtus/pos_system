@@ -15,6 +15,11 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { Plus, Edit, Trash2, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
+const csvEscape = (value) => {
+  const text = value == null ? "" : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
 export const ProductsPage = () => {
   // Image upload state
   const [imageMode, setImageMode] = useState("upload"); // "upload" or "url"
@@ -338,6 +343,67 @@ export const ProductsPage = () => {
       []),
   ];
 
+  const handleExportCsv = () => {
+    const rows = products?.data || [];
+
+    if (!rows.length) {
+      toast.error("No products to export");
+      return;
+    }
+
+    const headers = [
+      "Product Name",
+      "Category",
+      "SKU",
+      "Barcode",
+      "Price",
+      "Cost",
+      "Stock",
+      "Status",
+      "Description",
+    ];
+
+    const lines = rows.map((row) => {
+      const stock = row.inventory?.quantity || 0;
+      const threshold = row.inventory?.lowStockLevel || 10;
+      const status =
+        stock === 0
+          ? "Out of Stock"
+          : stock <= threshold
+            ? "Low Stock"
+            : stock <= threshold * 1.5
+              ? "Limited Stock"
+              : "In Stock";
+
+      return [
+        row.productName || "",
+        row.category?.name || "",
+        row.sku || "",
+        row.barcode || "",
+        Number(row.price || 0).toFixed(2),
+        Number(row.costPrice || 0).toFixed(2),
+        stock,
+        status,
+        row.description || "",
+      ];
+    });
+
+    const csv = [headers, ...lines]
+      .map((line) => line.map(csvEscape).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `products-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Image Zoom Modal */}
@@ -404,6 +470,7 @@ export const ProductsPage = () => {
             variant="ghost"
             icon={<Download size={18} />}
             className="w-70 gap-2"
+            onClick={handleExportCsv}
           >
             Export CSV
           </Button>

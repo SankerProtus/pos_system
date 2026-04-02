@@ -3,7 +3,6 @@ const prisma = new PrismaClient();
 import bcrypt from "bcrypt";
 
 async function main() {
-
   // Seed categories
   await prisma.category.createMany({
     data: [
@@ -152,7 +151,7 @@ async function main() {
         costPrice: 2.5,
         taxRate: 0.1,
         isActive: true,
-      }
+      },
     ],
     skipDuplicates: true,
   });
@@ -522,9 +521,17 @@ async function main() {
       currency: "USD",
       language: "en",
       theme: "light",
+      receiptHeaderText: "Thank you for your purchase",
       receiptFooter: "Thank you for shopping!",
+      receiptPaperWidth: "80mm",
+      autoPrint: false,
+      showLoyaltyPoints: false,
+      showStoreLogo: false,
       businessHours: "Mon-Sat 8:00-20:00",
       taxRate: 0.15,
+      pointsPerGHC: 1,
+      ghcPerPoint: 0.1,
+      minimumPointsToRedeem: 100,
     },
   });
 }

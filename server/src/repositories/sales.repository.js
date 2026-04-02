@@ -4,11 +4,44 @@ export const salesRepository = {
   getAllSales: async (data = {}) => {
     const limit = data?.limit;
     const status = data?.status;
-    const parseLimit = limit ? parseInt(limit) : undefined;
+    const from = data?.from;
+    const to = data?.to;
+    const parseLimit = limit ? parseInt(limit, 10) : undefined;
+
+    const where = {
+      status: status || undefined,
+    };
+
+    if (from || to) {
+      const createdAt = {};
+      const isDateOnly = (value) =>
+        typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+      if (from) {
+        const fromDate = new Date(from);
+        if (isDateOnly(from)) {
+          fromDate.setUTCHours(0, 0, 0, 0);
+        }
+        createdAt.gte = fromDate;
+      }
+
+      if (to) {
+        const toDate = new Date(to);
+        if (isDateOnly(to)) {
+          // For date-only queries, include the full day by using lt next day at 00:00.
+          toDate.setUTCHours(0, 0, 0, 0);
+          toDate.setUTCDate(toDate.getUTCDate() + 1);
+          createdAt.lt = toDate;
+        } else {
+          createdAt.lte = toDate;
+        }
+      }
+
+      where.createdAt = createdAt;
+    }
+
     return await prisma.sale.findMany({
-      where: {
-        status: status || undefined,
-      },
+      where,
       take: Number.isInteger(parseLimit) ? parseLimit : undefined,
       include: {
         user: true,

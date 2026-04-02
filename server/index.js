@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -21,6 +22,7 @@ dotenv.config();
 const app = express();
 setupTrustProxy(app);
 app.use(passport.initialize());
+app.use(helmet());
 
 // Middleware
 const normalizeOrigin = (value) => value?.trim().replace(/\/$/, "");

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Topbar } from "../components/layout/Topbar";
 import { Button } from "../components/common/Button";
 import { DataTable } from "../components/shared/DataTable";
+import { SearchInput } from "../components/shared/SearchInput";
 import { KpiCard } from "../components/shared/KpiCard";
 import { Modal } from "../components/common/Modal";
 import { Select } from "../components/common/Select";
@@ -11,7 +12,7 @@ import { FormInput } from "../components/common/FormInput";
 import { Badge } from "../components/common/Badge";
 import { apiClient } from "../api/axios";
 import { formatDate } from "../utils/formatDate";
-import { Package, Download, Search } from "lucide-react";
+import { Package, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
 export const InventoryPage = () => {
@@ -166,7 +167,9 @@ export const InventoryPage = () => {
       item.lowStockLevel,
       item.reorderPoint,
       item.product?.supplierProducts?.[0]?.supplier?.name || "N/A",
-      item.lastRestockedAt ? formatDate.standard(item.lastRestockedAt) : "Never",
+      item.lastRestockedAt
+        ? formatDate.standard(item.lastRestockedAt)
+        : "Never",
       statusLabel(item),
     ]);
 
@@ -227,7 +230,7 @@ export const InventoryPage = () => {
         ];
 
         return searchableFields.some((field) =>
-          (field || "").toLowerCase().includes(normalizedSearch)
+          (field || "").toLowerCase().includes(normalizedSearch),
         );
       });
 
@@ -259,8 +262,10 @@ export const InventoryPage = () => {
             <div
               className={`h-1.5 rounded-full ${getProgressColor(row)}`}
               style={{
-                width: `${Math.min(100, (row.quantity / row.reorderPoint
-                ) * 100)}%`,
+                width: `${Math.min(
+                  100,
+                  (row.quantity / row.reorderPoint) * 100,
+                )}%`,
               }}
             ></div>
           </div>
@@ -395,19 +400,12 @@ export const InventoryPage = () => {
 
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="w-full md:max-w-md">
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-              />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search by product, SKU, category, or supplier"
-                className="w-full rounded-lg border border-[#263548] bg-[#0a1628] py-2.5 pl-10 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onClear={() => setSearchTerm("")}
+              placeholder="Search by product, SKU, category, or supplier"
+            />
           </div>
           <p className="text-xs text-slate-400">
             Showing {filteredInventory.length} of {inventoryRows.length} items
@@ -438,7 +436,10 @@ export const InventoryPage = () => {
         title="Receive Stock"
         width={500}
       >
-        <form onSubmit={handleSubmitReceive(onSubmitReceive)} className="p-6 space-y-4">
+        <form
+          onSubmit={handleSubmitReceive(onSubmitReceive)}
+          className="p-6 space-y-4"
+        >
           <Select
             label="Product"
             options={receiveProductOptions}

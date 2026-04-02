@@ -1,7 +1,6 @@
 import axios from "axios";
 import { STORAGE_KEYS } from "../constants";
 
-// Use environment variable for API base URL, fallback to localhost:8080
 const baseURL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 
@@ -45,7 +44,6 @@ apiClient.interceptors.response.use(
       }
 
       // Handle specific status codes
-      // Don't auto-redirect on 401 during login/signup attempts
       const isAuthEndpoint = error.config?.url?.includes("/auth/");
 
       if (error.response.status === 401 && !isAuthEndpoint) {

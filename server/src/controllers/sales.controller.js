@@ -5,7 +5,24 @@ export const salesController = {
     try {
       const limit = req.query?.limit;
       const status = req.query?.status;
-      const sales = await salesService.getSales({ limit, status });
+      const from = req.query?.from;
+      const to = req.query?.to;
+
+      if (from && Number.isNaN(Date.parse(from))) {
+        return res.status(400).json({ error: "Invalid from date" });
+      }
+
+      if (to && Number.isNaN(Date.parse(to))) {
+        return res.status(400).json({ error: "Invalid to date" });
+      }
+
+      if (from && to && new Date(from) > new Date(to)) {
+        return res
+          .status(400)
+          .json({ error: "from date must be less than or equal to to date" });
+      }
+
+      const sales = await salesService.getSales({ limit, status, from, to });
       res.status(200).json({ data: sales });
     } catch (error) {
       console.error("Error fetching sales:", error);
@@ -98,15 +115,15 @@ export const salesController = {
       };
       res.status(201).json({ data: mappedSale });
     } catch (error) {
-        console.error("Error creating sale:", error);
-        const message = error?.message || error?.cause?.message || "";
-        if (
-          message.includes("Insufficient stock") ||
-          message.includes("Inventory not found")
-        ) {
-          return res.status(400).json({ error: message });
-        }
-        res.status(500).json({ error: "Internal server error, " + message });
+      console.error("Error creating sale:", error);
+      const message = error?.message || error?.cause?.message || "";
+      if (
+        message.includes("Insufficient stock") ||
+        message.includes("Inventory not found")
+      ) {
+        return res.status(400).json({ error: message });
+      }
+      res.status(500).json({ error: "Internal server error, " + message });
     }
   },
   voidSale: async (req, res) => {

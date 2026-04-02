@@ -568,9 +568,17 @@ model Setting {
   currency  String   @db.VarChar(10) @default("USD")
   language  String   @db.VarChar(10) @default("en")
   theme     String   @db.VarChar(20) @default("light")
+  receiptHeaderText String? @db.Text
   receiptFooter String? @db.Text
+  receiptPaperWidth String @db.VarChar(10) @default("80mm")
+  autoPrint Boolean @default(false)
+  showLoyaltyPoints Boolean @default(false)
+  showStoreLogo Boolean @default(false)
   businessHours String? @db.Text
   taxRate   Decimal  @db.Decimal(5,2) @default(0.15)
+  pointsPerGHC Decimal @db.Decimal(10,2) @default(1.00)
+  ghcPerPoint Decimal @db.Decimal(10,2) @default(0.10)
+  minimumPointsToRedeem Int @default(100)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

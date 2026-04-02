@@ -1,84 +1,191 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { Topbar } from '../components/layout/Topbar';
-import { Button } from '../components/common/Button';
-import { FormInput } from '../components/common/FormInput';
-import { Select } from '../components/common/Select';
-import { Badge } from '../components/common/Badge';
-import { apiClient } from '../api/axios';
+import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { Topbar } from "../components/layout/Topbar";
+import { Button } from "../components/common/Button";
+import { FormInput } from "../components/common/FormInput";
+import { Select } from "../components/common/Select";
+import { Badge } from "../components/common/Badge";
+import { apiClient } from "../api/axios";
 import { formatDate } from "../utils/formatDate";
-import { Store, DollarSign, Receipt, Star, Database } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { cn } from '../utils/cn';
+import { Store, DollarSign, Receipt, Star, Database } from "lucide-react";
+import toast from "react-hot-toast";
+import { cn } from "../utils/cn";
 
 export const SettingsPage = () => {
-  const [activeTab, setActiveTab] = useState('store');
+  const [activeTab, setActiveTab] = useState("store");
 
   const queryClient = useQueryClient();
-  const { register: registerStore, handleSubmit: handleSubmitStore } = useForm();
-  const { register: registerTax, handleSubmit: handleSubmitTax } = useForm();
-  const { register: registerReceipt, handleSubmit: handleSubmitReceipt } = useForm();
-  const { register: registerLoyalty, handleSubmit: handleSubmitLoyalty } = useForm();
+  const {
+    register: registerStore,
+    handleSubmit: handleSubmitStore,
+    reset: resetStore,
+  } = useForm();
+  const {
+    register: registerTax,
+    handleSubmit: handleSubmitTax,
+    reset: resetTax,
+  } = useForm();
+  const {
+    register: registerReceipt,
+    handleSubmit: handleSubmitReceipt,
+    reset: resetReceipt,
+  } = useForm();
+  const {
+    register: registerLoyalty,
+    handleSubmit: handleSubmitLoyalty,
+    reset: resetLoyalty,
+  } = useForm();
 
   const { data: settings } = useQuery({
-    queryKey: ['settings'],
+    queryKey: ["settings"],
     queryFn: async () => {
-      const response = await apiClient.get('/settings');
+      const response = await apiClient.get("/settings");
       return response.data;
     },
   });
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await apiClient.patch('/settings', data);
+      const response = await apiClient.patch("/settings", data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['settings']);
-      toast.success('Settings updated successfully');
+      queryClient.invalidateQueries(["settings"]);
+      toast.success("Settings updated successfully");
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to update settings');
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Failed to update settings",
+      );
     },
   });
 
   const backupMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post('/settings/backup');
+      const response = await apiClient.post("/settings/backup");
       return response.data;
     },
     onSuccess: () => {
-      toast.success('Backup created successfully');
-      queryClient.invalidateQueries(['settings']);
+      toast.success("Backup created successfully");
+      queryClient.invalidateQueries(["settings"]);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to create backup');
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Failed to create backup",
+      );
     },
   });
 
   const tabs = [
-    { id: 'store', label: 'Store Info', icon: Store },
-    { id: 'tax', label: 'Tax & Pricing', icon: DollarSign },
-    { id: 'receipt', label: 'Receipt', icon: Receipt },
-    { id: 'loyalty', label: 'Loyalty', icon: Star },
-    { id: 'backup', label: 'Backup', icon: Database },
+    { id: "store", label: "Store Info", icon: Store },
+    { id: "tax", label: "Tax & Pricing", icon: DollarSign },
+    { id: "receipt", label: "Receipt", icon: Receipt },
+    { id: "loyalty", label: "Loyalty", icon: Star },
+    { id: "backup", label: "Backup", icon: Database },
   ];
 
+  useEffect(() => {
+    if (!settings) return;
+
+    const numericTaxRate = Number(settings.taxRate);
+    const taxRatePercent = Number.isFinite(numericTaxRate)
+      ? numericTaxRate * 100
+      : settings.globalVatRate;
+
+    resetStore({
+      storeName: settings.storeName || "",
+      storeAddress: settings.storeAddress || "",
+      vatTIN: settings.vatTIN || settings.storeTaxId || "",
+      storePhone: settings.storePhone || "",
+      currencySymbol: settings.currencySymbol || settings.currency || "USD",
+      storeEmail: settings.storeEmail || "",
+    });
+
+    resetTax({
+      globalVatRate: taxRatePercent ?? 5,
+      roundingMethod: settings.roundingMethod || "NEAREST",
+    });
+
+    resetReceipt({
+      receiptHeaderText: settings.receiptHeaderText || "",
+      receiptFooterText:
+        settings.receiptFooterText || settings.receiptFooter || "",
+      receiptPaperWidth: settings.receiptPaperWidth || "80mm",
+      autoPrint: Boolean(settings.autoPrint),
+      showLoyaltyPoints: Boolean(settings.showLoyaltyPoints),
+      showStoreLogo: Boolean(settings.showStoreLogo),
+    });
+
+    resetLoyalty({
+      pointsPerGHC: settings.pointsPerGHC ?? 1,
+      ghcPerPoint: settings.ghcPerPoint ?? 0.1,
+      minimumPointsToRedeem: settings.minimumPointsToRedeem ?? 100,
+    });
+  }, [settings, resetStore, resetTax, resetReceipt, resetLoyalty]);
+
   const onSubmitStore = (data) => {
-    updateSettingsMutation.mutate(data);
+    updateSettingsMutation.mutate({
+      storeName: data.storeName,
+      storeAddress: data.storeAddress,
+      storeTaxId: data.vatTIN,
+      currency: data.currencySymbol,
+    });
   };
 
   const onSubmitTax = (data) => {
-    updateSettingsMutation.mutate(data);
+    const globalVatRate = Number(data.globalVatRate);
+
+    if (!Number.isFinite(globalVatRate)) {
+      toast.error("Enter a valid VAT rate");
+      return;
+    }
+
+    updateSettingsMutation.mutate({
+      taxRate: globalVatRate / 100,
+    });
   };
 
   const onSubmitReceipt = (data) => {
-    updateSettingsMutation.mutate(data);
+    updateSettingsMutation.mutate({
+      receiptHeaderText: data.receiptHeaderText,
+      receiptFooter: data.receiptFooterText,
+      receiptPaperWidth: data.receiptPaperWidth,
+      autoPrint: Boolean(data.autoPrint),
+      showLoyaltyPoints: Boolean(data.showLoyaltyPoints),
+      showStoreLogo: Boolean(data.showStoreLogo),
+    });
   };
 
   const onSubmitLoyalty = (data) => {
-    updateSettingsMutation.mutate(data);
+    const pointsPerGHC = Number(data.pointsPerGHC);
+    const ghcPerPoint = Number(data.ghcPerPoint);
+    const minimumPointsToRedeem = Number(data.minimumPointsToRedeem);
+
+    if (!Number.isFinite(pointsPerGHC) || pointsPerGHC < 0) {
+      toast.error("Enter a valid points-per-GH₵ value");
+      return;
+    }
+
+    if (!Number.isFinite(ghcPerPoint) || ghcPerPoint < 0) {
+      toast.error("Enter a valid GH₵-per-point value");
+      return;
+    }
+
+    if (!Number.isInteger(minimumPointsToRedeem) || minimumPointsToRedeem < 0) {
+      toast.error("Enter a valid minimum redeemable points value");
+      return;
+    }
+
+    updateSettingsMutation.mutate({
+      pointsPerGHC,
+      ghcPerPoint,
+      minimumPointsToRedeem,
+    });
   };
 
   return (
@@ -149,6 +256,7 @@ export const SettingsPage = () => {
                   label="Phone"
                   defaultValue={settings?.storePhone || ""}
                   placeholder={settings?.storePhone || "+233XXXXXXXXX"}
+                  disabled
                 />
                 <FormInput
                   {...registerStore("currencySymbol")}
@@ -162,7 +270,12 @@ export const SettingsPage = () => {
                   type="email"
                   defaultValue={settings?.storeEmail || ""}
                   placeholder={settings?.storeEmail || "store@example.com"}
+                  disabled
                 />
+                <p className="text-xs text-slate-400">
+                  Phone and email fields are display-only for now and are not
+                  saved in system settings.
+                </p>
                 <Button
                   type="submit"
                   variant="primary"

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Topbar } from "../components/layout/Topbar";
 import { Button } from "../components/common/Button";
 import { DataTable } from "../components/shared/DataTable";
+import { SearchInput } from "../components/shared/SearchInput";
 import { KpiCard } from "../components/shared/KpiCard";
 import { Modal } from "../components/common/Modal";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
@@ -22,6 +23,9 @@ export const UsersPage = () => {
   const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [togglingUserId, setTogglingUserId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const queryClient = useQueryClient();
   const {
@@ -127,6 +131,38 @@ export const UsersPage = () => {
   const adminCount = users?.filter((u) => u.role === "ADMIN").length || 0;
   const managerCount = users?.filter((u) => u.role === "MANAGER").length || 0;
   const cashierCount = users?.filter((u) => u.role === "CASHIER").length || 0;
+
+  const filteredUsers = useMemo(() => {
+    const list = users || [];
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) return list;
+
+    return list.filter((u) => {
+      const haystack = [
+        u.name,
+        u.email,
+        u.role,
+        u.isActive ? "active" : "disabled",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [users, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, currentPage]);
 
   const getRoleBadge = (role) => {
     const variants = {
@@ -263,13 +299,45 @@ export const UsersPage = () => {
           />
         </div>
 
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="w-full md:max-w-md">
+            <SearchInput
+              value={searchTerm}
+              onChange={(value) => {
+                setSearchTerm(value);
+                setCurrentPage(1);
+              }}
+              onClear={() => {
+                setSearchTerm("");
+                setCurrentPage(1);
+              }}
+              placeholder="Search by name, email, role, or status"
+            />
+          </div>
+          <p className="text-xs text-slate-400">
+            Showing {paginatedUsers.length} of {filteredUsers.length} users
+          </p>
+        </div>
+
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={users || []}
+          data={paginatedUsers}
           isLoading={isLoading}
           emptyMessage="No users found"
           cellClassName="whitespace-nowrap px-4 py-3 text-sm text-slate-300"
+          pagination={
+            filteredUsers.length > pageSize
+              ? {
+                  page: currentPage,
+                  totalPages,
+                  onPageChange: (page) => {
+                    const safePage = Math.min(Math.max(page, 1), totalPages);
+                    setCurrentPage(safePage);
+                  },
+                }
+              : undefined
+          }
         />
       </main>
 

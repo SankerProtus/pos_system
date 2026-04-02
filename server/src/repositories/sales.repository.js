@@ -57,6 +57,13 @@ export const salesRepository = {
     const userId = saleData?.user?.connect?.id || null;
     const customerId = saleData?.customer?.connect?.id || null;
 
+    console.log("[salesRepository.createSale] begin", {
+      itemCount: saleItems.length,
+      userId,
+      customerId,
+      paymentMethod: saleData?.payment?.create?.method || null,
+    });
+
     return await prisma.$transaction(async (tx) => {
       // Validate inventory availability for each sale line before creating sale
       for (const item of saleItems) {
@@ -85,6 +92,11 @@ export const salesRepository = {
         },
       });
 
+      console.log("[salesRepository.createSale] sale row created", {
+        saleId: newSale.id,
+        saleItems: newSale.saleItems.length,
+      });
+
       // Apply inventory movements and audit records after sale creation
       for (const item of saleItems) {
         const inventory = await tx.inventory.findUnique({
@@ -96,6 +108,12 @@ export const salesRepository = {
         await tx.inventory.update({
           where: { id: inventory.id },
           data: { quantity: quantityAfter },
+        });
+
+        console.log("[salesRepository.createSale] inventory updated", {
+          productId: item.productId,
+          quantityBefore,
+          quantityAfter,
         });
 
         if (userId) {
@@ -129,9 +147,17 @@ export const salesRepository = {
               },
             },
           });
+
+          console.log("[salesRepository.createSale] loyalty points updated", {
+            customerId,
+            pointsEarned,
+          });
         }
       }
 
+      console.log("[salesRepository.createSale] transaction complete", {
+        saleId: newSale.id,
+      });
       return newSale;
     });
   },
@@ -173,6 +199,7 @@ export const salesRepository = {
     });
   },
   voidSale: async (saleId, actorUserId) => {
+    console.log("[salesRepository.voidSale] begin", { saleId, actorUserId });
     return await prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
@@ -199,6 +226,12 @@ export const salesRepository = {
         await tx.inventory.update({
           where: { id: inventory.id },
           data: { quantity: quantityAfter },
+        });
+
+        console.log("[salesRepository.voidSale] inventory restored", {
+          productId: item.productId,
+          quantityBefore,
+          quantityAfter,
         });
 
         const adjustmentUserId = actorUserId || sale.userId || null;

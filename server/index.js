@@ -14,6 +14,7 @@ import { inventoryRouter } from "./src/routes/inventory.routes.js";
 import { posRouter } from "./src/routes/pos.routes.js";
 import { reportRoutes } from "./src/routes/report.routes.js";
 import { settingsRouter } from "./src/routes/settings.routes.js";
+import { paymentsRoutes } from "./src/routes/payments.routes.js";
 import passport from "./src/config/PassportConfig.js";
 import { setupTrustProxy } from "./src/utils/rateLimiter.js";
 
@@ -73,6 +74,7 @@ app.use("/api/inventory", inventoryRouter);
 app.use("/api/reports", reportRoutes);
 app.use("/api/pos", posRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/payments", paymentsRoutes);
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(

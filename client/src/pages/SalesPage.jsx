@@ -49,6 +49,9 @@ export const SalesPage = () => {
       queryClient.invalidateQueries(["sales"]);
       queryClient.invalidateQueries(["products"]);
       queryClient.invalidateQueries(["inventory"]);
+      queryClient.invalidateQueries(["dashboard-daily"]);
+      queryClient.invalidateQueries(["dashboard-weekly"]);
+      queryClient.invalidateQueries(["dashboard-sales"]);
       toast.success("Sale voided successfully");
       setIsVoidDialogOpen(false);
       setVoidingSaleId(null);
@@ -283,7 +286,11 @@ export const SalesPage = () => {
                 onChange={setStatusFilter}
               />
             </div>
-            <Button variant="ghost" icon={<Download size={18} />} onClick={handleExportCsv}>
+            <Button
+              variant="ghost"
+              icon={<Download size={18} />}
+              onClick={handleExportCsv}
+            >
               Export CSV
             </Button>
             <div className="ml-auto">

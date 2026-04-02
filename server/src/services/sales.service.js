@@ -34,6 +34,7 @@ export const salesService = {
         items,
         paymentMethod,
         amountPaid,
+        reference,
         userId,
         customerId,
         discountId,
@@ -90,16 +91,107 @@ export const salesService = {
         ) / 100;
       const totalAmount =
         Math.round((subtotal + taxAmount - discount) * 100) / 100;
+
+      // Payment validation
+      const allowedPaymentMethods = ["CASH", "CARD", "MOBILE_MONEY"];
+      const normalizedPaymentMethod = String(paymentMethod || "")
+        .trim()
+        .toUpperCase();
+
+      if (!allowedPaymentMethods.includes(normalizedPaymentMethod)) {
+        throw new Error(
+          `Invalid payment method. Allowed methods: ${allowedPaymentMethods.join(", ")}`,
+        );
+      }
+
       const normalizedAmountPaid =
         Math.round((Number(amountPaid) || 0) * 100) / 100;
+
       if (!Number.isFinite(normalizedAmountPaid) || normalizedAmountPaid <= 0) {
         throw new Error("Valid amount paid is required");
       }
-      if (normalizedAmountPaid < totalAmount) {
-        throw new Error("Amount paid is less than total");
+
+      const normalizedReference =
+        typeof reference === "string" && reference.trim() !== ""
+          ? String(reference).trim()
+          : null;
+      const toCents = (amount) => Math.round(Number(amount) * 100);
+      const totalAmountCents = toCents(totalAmount);
+      const amountPaidCents = toCents(normalizedAmountPaid);
+
+      let changeDue = 0;
+
+      if (normalizedPaymentMethod === "CASH") {
+        if (amountPaidCents < totalAmountCents) {
+          throw new Error("Insufficient amount paid");
+        }
+        changeDue = (amountPaidCents - totalAmountCents) / 100;
       }
-      const changeDue =
-        Math.round((normalizedAmountPaid - totalAmount) * 100) / 100;
+
+      if (normalizedPaymentMethod === "MOBILE_MONEY") {
+        if (!normalizedReference) {
+          throw new Error("Mobile money transaction reference is required");
+        }
+
+        if (amountPaidCents !== totalAmountCents) {
+          throw new Error(
+            "Amount paid must match total amount for mobile money payments",
+          );
+        }
+
+        changeDue = 0;
+      }
+
+      if (normalizedPaymentMethod === "CARD") {
+        if (!normalizedReference) {
+          throw new Error(
+            "Card transaction reference is required for Paystack verification",
+          );
+        }
+
+        if (amountPaidCents !== totalAmountCents) {
+          throw new Error(
+            "Amount paid must match total amount for card payments",
+          );
+        }
+
+        changeDue = 0;
+      }
+
+      const requiresGatewayVerification =
+        normalizedPaymentMethod === "CARD" ||
+        normalizedPaymentMethod === "MOBILE_MONEY";
+      if (requiresGatewayVerification) {
+        if (!normalizedReference) {
+          throw new Error(
+            "Payment reference is required for card or mobile money verification",
+          );
+        }
+
+        const { paystackService } = await import("./paystack.service.js");
+        const verified =
+          await paystackService.verifyTransaction(normalizedReference);
+
+        const gatewayAmountCents = Math.round(Number(verified?.amount) || 0);
+        const expectedAmountCents = totalAmountCents;
+        const gatewayStatus = verified?.status;
+
+        if (gatewayStatus !== "success") {
+          throw new Error("Payment not successful on Paystack");
+        }
+
+        if (
+          !Number.isFinite(gatewayAmountCents) ||
+          gatewayAmountCents !== expectedAmountCents
+        ) {
+          throw new Error("Verified payment amount does not match sale total");
+        }
+
+        const channel = String(verified?.channel || "").toLowerCase();
+        if (normalizedPaymentMethod === "CARD" && channel !== "card") {
+          throw new Error("Payment method does not match Paystack channel");
+        }
+      }
 
       const salePayload = {
         ...rest,
@@ -116,9 +208,10 @@ export const salesService = {
         },
         payment: {
           create: {
-            method: paymentMethod,
+            method: normalizedPaymentMethod,
             amountPaid: normalizedAmountPaid,
-            changeDue,
+            changeDue: Math.round(changeDue * 100) / 100,
+            reference: normalizedReference,
           },
         },
       };
@@ -168,7 +261,23 @@ export const salesService = {
       const message = error?.message || error?.cause?.message || "";
       if (
         message.includes("Insufficient stock") ||
-        message.includes("Inventory not found")
+        message.includes("Inventory not found") ||
+        message.includes("No items provided") ||
+        message.includes("Payment method required") ||
+        message.includes("Invalid payment method") ||
+        message.includes("Valid amount paid is required") ||
+        message.includes("Amount paid is less than total") ||
+        message.includes("Card transaction reference is required") ||
+        message.includes("Mobile money transaction reference is required") ||
+        message.includes(
+          "Amount paid must match total amount for mobile money payments",
+        ) ||
+        message.includes(
+          "Amount paid must match total amount for card payments",
+        ) ||
+        message.includes("Payment not successful on Paystack") ||
+        message.includes("Verified payment amount does not match sale total") ||
+        message.includes("Paystack")
       ) {
         throw new Error(message);
       }

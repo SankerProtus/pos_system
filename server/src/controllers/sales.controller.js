@@ -37,8 +37,18 @@ export const salesController = {
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized: User ID missing" });
       }
+      console.log("[sales.createSale] request received", {
+        paymentMethod: req.body?.paymentMethod,
+        customerId: req.body?.customerId || null,
+        itemCount: Array.isArray(req.body?.items) ? req.body.items.length : 0,
+      });
       const saleData = { ...req.body, userId };
       const newSale = await salesService.createSale(saleData);
+      console.log("[sales.createSale] sale created", {
+        saleId: newSale.id,
+        totalAmount: newSale.totalAmount,
+        status: newSale.status,
+      });
 
       // Map backend sale object to exact frontend Receipt shape
       const mappedSale = {
@@ -82,16 +92,12 @@ export const salesController = {
               amountPaid: Number(newSale.payment.amountPaid) || 0,
               changeDue: Number(newSale.payment.changeDue) || 0,
               reference: newSale.payment.reference || null,
-              provider: newSale.payment.provider || null,
-              last4: newSale.payment.last4 || null,
             }
           : {
               method: "",
               amountPaid: 0,
               changeDue: 0,
               reference: null,
-              provider: null,
-              last4: null,
             },
         receipt: newSale.receipt
           ? {
@@ -119,7 +125,13 @@ export const salesController = {
       const message = error?.message || error?.cause?.message || "";
       if (
         message.includes("Insufficient stock") ||
-        message.includes("Inventory not found")
+        message.includes("Inventory not found") ||
+        message.includes("No items provided") ||
+        message.includes("Payment") ||
+        message.includes("Amount") ||
+        message.includes("Card") ||
+        message.includes("Mobile money") ||
+        message.includes("Paystack")
       ) {
         return res.status(400).json({ error: message });
       }

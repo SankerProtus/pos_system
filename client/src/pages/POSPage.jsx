@@ -85,7 +85,9 @@ export const POSPage = () => {
       setIsPaymentModalOpen(false);
       setIsReceiptModalOpen(true);
       queryClient.invalidateQueries(["dashboard-daily"]);
+      queryClient.invalidateQueries(["dashboard-weekly"]);
       queryClient.invalidateQueries(["dashboard-sales"]);
+      queryClient.invalidateQueries(["sales"]);
       queryClient.invalidateQueries(["products"]);
       queryClient.invalidateQueries(["inventory"]);
       queryClient.invalidateQueries(["customers"]);
@@ -115,6 +117,14 @@ export const POSPage = () => {
     }
   };
 
+  const handlePaymentMethodChange = (method) => {
+    setPaymentMethod(method);
+
+    const total = grandTotal(discount).toFixed(2);
+    // Non-cash must settle exact total; keep amount synced to total due.
+    setAmountPaid(total);
+  };
+
   const handleScannerInputChange = (e) => {
     const value = e.target.value;
     setBarcode(value);
@@ -137,39 +147,6 @@ export const POSPage = () => {
     }
   }, []);
 
-  const handleConfirmPayment = () => {
-    const total = Math.round(grandTotal(discount) * 100) / 100;
-    const parsedPaid = parseFloat(amountPaid);
-    const paid = Math.round(parsedPaid * 100) / 100;
-
-    if (!Number.isFinite(parsedPaid) || paid <= 0) {
-      toast.error("Enter a valid amount tendered");
-      return;
-    }
-
-    if (paid < total) {
-      toast.error("Amount paid is less than total");
-      return;
-    }
-
-    const saleData = {
-      items: items.map((item) => ({
-        productId: item.productId,
-        productName: item.name,
-        barcode: item.barcode,
-        price: item.price,
-        taxRate: item.taxRate,
-        quantity: item.quantity,
-      })),
-      paymentMethod,
-      amountPaid: paid,
-      discountAmount: discount,
-      customerId: selectedCustomerId || null,
-    };
-
-    createSaleMutation.mutate(saleData);
-  };
-
   const handlePrint = useReactToPrint({
     content: () => receiptRef.current,
   });
@@ -183,6 +160,130 @@ export const POSPage = () => {
     setSelectedCustomerId("");
     setPaymentMethod("CASH");
     barcodeInputRef.current?.focus();
+  };
+
+  const handleConfirmPayment = () => {
+    const total = Math.round(grandTotal(discount) * 100) / 100;
+    const parsedPaid = parseFloat(amountPaid);
+    const paid = Math.round(parsedPaid * 100) / 100;
+
+    if (!Number.isFinite(parsedPaid) || paid <= 0) {
+      toast.error("Enter a valid amount tendered");
+      return;
+    }
+
+    if (paymentMethod !== "CASH" && paid < total) {
+      toast.error("Amount paid is less than total for non-cash payment");
+      return;
+    }
+
+    if (paymentMethod === "CASH" && paid < total) {
+      toast.error("Amount tendered is less than total");
+      return;
+    }
+
+    if (paymentMethod === "MOBILE_MONEY") {
+      if (paid !== total) {
+        toast.error("Amount paid must match total for mobile money payments");
+        return;
+      }
+    }
+
+    if (paymentMethod === "CARD") {
+      if (paid !== total) {
+        toast.error("Amount paid must match total for card payments");
+        return;
+      }
+    }
+
+    const submitSale = async (resolvedReference) => {
+      const saleData = {
+        items: items.map((item) => ({
+          productId: item.productId,
+          productName: item.name,
+          barcode: item.barcode,
+          price: item.price,
+          taxRate: item.taxRate,
+          quantity: item.quantity,
+        })),
+        paymentMethod,
+        amountPaid: paid,
+        discountAmount: discount,
+        customerId: selectedCustomerId || null,
+        reference: resolvedReference || null,
+      };
+
+      return createSaleMutation.mutateAsync(saleData);
+    };
+
+    const runNonCashFlow = async () => {
+      const selectedCustomer = (customers?.data || []).find(
+        (c) => c.id === selectedCustomerId,
+      );
+
+      const initResponse = await apiClient.post("/payments/initialize", {
+        amount: paid,
+        paymentMethod,
+        customerId: selectedCustomerId || null,
+        customerEmail: selectedCustomer?.email || null,
+        metadata: {
+          source: "POS",
+        },
+      });
+
+      const authorizationUrl = initResponse?.data?.data?.authorizationUrl;
+      const reference = initResponse?.data?.data?.reference;
+
+      if (!authorizationUrl || !reference) {
+        throw new Error("Unable to initialize Paystack payment");
+      }
+
+      const popup = window.open(
+        authorizationUrl,
+        "_blank",
+        "noopener,noreferrer",
+      );
+      if (!popup) {
+        throw new Error("Popup blocked. Please allow popups and try again.");
+      }
+
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        await wait(3000);
+
+        try {
+          const verifyResponse = await apiClient.get(
+            `/payments/verify/${reference}`,
+          );
+          const status = verifyResponse?.data?.data?.status;
+          if (status === "success") {
+            toast.success("Payment verified successfully");
+            await submitSale(reference);
+            return;
+          }
+        } catch {
+          // Keep polling until timeout.
+        }
+      }
+
+      throw new Error(
+        "Payment verification timed out. Complete payment and retry.",
+      );
+    };
+
+    if (paymentMethod === "CASH") {
+      submitSale(null);
+      return;
+    }
+
+    runNonCashFlow().catch((error) => {
+      toast.error(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to process Paystack payment",
+      );
+    });
   };
 
   const change = parseFloat(amountPaid || 0) - grandTotal(discount);
@@ -434,7 +535,7 @@ export const POSPage = () => {
               {["CASH", "MOBILE_MONEY", "CARD"].map((method) => (
                 <button
                   key={method}
-                  onClick={() => setPaymentMethod(method)}
+                  onClick={() => handlePaymentMethodChange(method)}
                   className={`px-4 py-3 rounded-lg text-sm font-medium transition ${
                     paymentMethod === method
                       ? "bg-indigo-500 text-white"
@@ -449,18 +550,19 @@ export const POSPage = () => {
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
-              Amount Tendered
+              {paymentMethod === "CASH" ? "Amount Tendered" : "Amount Paid"}
             </label>
             <input
               type="number"
               value={amountPaid}
               onChange={(e) => setAmountPaid(e.target.value)}
-              className="w-full px-4 py-3 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg font-mono text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              disabled={paymentMethod !== "CASH"}
+              className="w-full px-4 py-3 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg font-mono text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
               step="0.01"
             />
           </div>
 
-          {change > 0 && (
+          {paymentMethod === "CASH" && change > 0 && (
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-emerald-400">Change Due</span>

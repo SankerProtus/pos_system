@@ -88,6 +88,8 @@ export const POSPage = () => {
       queryClient.invalidateQueries(["dashboard-sales"]);
       queryClient.invalidateQueries(["products"]);
       queryClient.invalidateQueries(["inventory"]);
+      queryClient.invalidateQueries(["customers"]);
+      queryClient.invalidateQueries(["customer-sales"]);
       toast.success("Sale completed successfully!");
     },
     onError: (error) => {

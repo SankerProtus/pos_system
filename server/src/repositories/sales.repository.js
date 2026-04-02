@@ -22,6 +22,7 @@ export const salesRepository = {
   createSale: async (saleData) => {
     const saleItems = saleData?.saleItems?.create || [];
     const userId = saleData?.user?.connect?.id || null;
+    const customerId = saleData?.customer?.connect?.id || null;
 
     return await prisma.$transaction(async (tx) => {
       // Validate inventory availability for each sale line before creating sale
@@ -75,6 +76,24 @@ export const salesRepository = {
               quantityChange: -item.quantity,
               quantityAfter,
               referenceId: newSale.id,
+            },
+          });
+        }
+      }
+
+      // Award loyalty points to registered customers.
+      if (customerId) {
+        const pointsEarned = Math.max(
+          0,
+          Math.floor(Number(newSale.totalAmount) || 0),
+        );
+        if (pointsEarned > 0) {
+          await tx.customer.update({
+            where: { id: customerId },
+            data: {
+              loyaltyPoints: {
+                increment: pointsEarned,
+              },
             },
           });
         }
@@ -163,6 +182,32 @@ export const salesRepository = {
               referenceId: sale.id,
             },
           });
+        }
+      }
+
+      // Revert awarded loyalty points when a completed sale is voided.
+      if (sale.customerId) {
+        const pointsToRevert = Math.max(
+          0,
+          Math.floor(Number(sale.totalAmount) || 0),
+        );
+        if (pointsToRevert > 0) {
+          const customer = await tx.customer.findUnique({
+            where: { id: sale.customerId },
+            select: { loyaltyPoints: true },
+          });
+
+          if (customer) {
+            await tx.customer.update({
+              where: { id: sale.customerId },
+              data: {
+                loyaltyPoints: Math.max(
+                  0,
+                  (customer.loyaltyPoints || 0) - pointsToRevert,
+                ),
+              },
+            });
+          }
         }
       }
 

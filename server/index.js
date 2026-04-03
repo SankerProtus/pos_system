@@ -55,7 +55,13 @@ const corsOptions = {
 // Middlewares
 app.use(cors(corsOptions));
 app.use(cookieParser());
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString("utf8");
+    },
+  }),
+);
 app.use(morgan("dev"));
 app.use(express.urlencoded({ extended: true }));
 

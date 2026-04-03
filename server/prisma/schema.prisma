@@ -29,6 +29,14 @@ enum SaleStatus {
   COMPLETED  // Payment accepted, inventory deducted
   VOIDED     // Cancelled before payment
   REFUNDED   // Post-completion reversal
+  CANCELLED  // Async payment expired or failed before completion
+}
+
+// Lifecycle of asynchronous payment processing.
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 // Reason codes for manual inventory movements.
@@ -425,21 +433,48 @@ model Payment {
   id          String        @id @default(cuid())
   saleId      String        @unique
   method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  amount      Decimal       @db.Decimal(12, 2)
   amountPaid  Decimal       @db.Decimal(12, 2)
   changeDue   Decimal       @default(0) @db.Decimal(12, 2)
 
   // External references for non-cash methods
-  reference   String?       @db.VarChar(100) // Mobile-money txn ID / card auth code
+  reference   String        @unique @db.VarChar(100) // Mobile-money txn ID / card auth code
+  phoneNumber String?       @db.VarChar(20)
+  providerStatus String?    @db.VarChar(50)
+  failureReason String?     @db.Text
+  expiresAt   DateTime?
+  processedAt DateTime?
   provider    String?       @db.VarChar(50)  // e.g. "M-Pesa", "Visa", "Mastercard"
   last4       String?       @db.VarChar(4)   // Last 4 digits of card (never full PAN)
 
   createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   sale Sale @relation(fields: [saleId], references: [id])
+  webhookEvents PaymentWebhookEvent[]
 
   @@index([method])
   @@index([createdAt])
   @@map("payments")
+}
+
+model PaymentWebhookEvent {
+  id             String   @id @default(cuid())
+  providerEventId String   @unique @db.VarChar(140)
+  reference      String    @db.VarChar(100)
+  eventType      String    @db.VarChar(80)
+  status         String?   @db.VarChar(40)
+  signature      String?   @db.VarChar(255)
+  receivedAt     DateTime  @default(now())
+  processedAt    DateTime?
+  paymentId      String?
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([reference])
+  @@index([paymentId])
+  @@map("payment_webhook_events")
 }
 
 //  ================  RECEIPTS  ================

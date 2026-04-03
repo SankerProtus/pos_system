@@ -56,6 +56,86 @@ export const paystackService = {
         return body?.data || null;
     },
 
+    chargeMobileMoney: async ({
+        email,
+        amount,
+        phoneNumber,
+        provider = "mtn",
+        reference,
+        metadata = {},
+    }) => {
+        if (!email || !String(email).trim()) {
+            throw new Error("Customer email is required for Paystack charge");
+        }
+
+        const normalizedAmount = Number(amount);
+        if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+            throw new Error("Valid amount is required for Paystack charge");
+        }
+
+        if (!phoneNumber || !String(phoneNumber).trim()) {
+            throw new Error("Customer phone number is required for Paystack charge");
+        }
+
+        const momoProvider = String(provider || "mtn").trim().toLowerCase();
+        const url = `${PAYSTACK_BASE_URL}/charge`;
+        const payload = {
+            email: String(email).trim(),
+            amount: Math.round(normalizedAmount * 100),
+            currency: process.env.PAYSTACK_CURRENCY || "GHS",
+            mobile_money: {
+                phone: String(phoneNumber).trim(),
+                provider: momoProvider,
+            },
+            reference,
+            metadata,
+        };
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload),
+        });
+
+        const body = await response.json();
+
+        if (!response.ok || body?.status !== true) {
+            throw new Error(body?.message || "Paystack mobile money charge failed");
+        }
+
+        return body?.data || null;
+    },
+
+    submitChargeOtp: async ({ reference, otp }) => {
+        if (!reference || !String(reference).trim()) {
+            throw new Error("Payment reference is required for OTP submission");
+        }
+
+        if (!otp || !String(otp).trim()) {
+            throw new Error("OTP is required for Paystack verification");
+        }
+
+        const url = `${PAYSTACK_BASE_URL}/charge/submit_otp`;
+        const payload = {
+            reference: String(reference).trim(),
+            otp: String(otp).trim(),
+        };
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload),
+        });
+
+        const body = await response.json();
+
+        if (!response.ok || body?.status !== true) {
+            throw new Error(body?.message || "Paystack OTP submission failed");
+        }
+
+        return body?.data || null;
+    },
+
     verifyTransaction: async (reference) => {
         if (!reference || !String(reference).trim()) {
             throw new Error("Payment reference is required for Paystack verification");

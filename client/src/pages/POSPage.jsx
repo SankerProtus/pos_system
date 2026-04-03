@@ -10,6 +10,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { Search, Minus, Plus, X, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Receipt } from "../components/shared/Receipt";
+import { MobileMoneyPaymentModal } from "../components/shared/MobileMoneyPaymentModal";
 import { useReactToPrint } from "react-to-print";
 
 export const POSPage = () => {
@@ -17,12 +18,21 @@ export const POSPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [barcode, setBarcode] = useState("");
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isMobileMoneyModalOpen, setIsMobileMoneyModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [amountPaid, setAmountPaid] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [discount, setDiscount] = useState(0);
   const [completedSale, setCompletedSale] = useState(null);
+  const [mobileMoneyPhoneNumber, setMobileMoneyPhoneNumber] = useState("");
+  const [mobileMoneyOtp, setMobileMoneyOtp] = useState("");
+  const [mobileMoneyReference, setMobileMoneyReference] = useState("");
+  const [mobileMoneyRequiresOtp, setMobileMoneyRequiresOtp] = useState(false);
+  const [mobileMoneyAwaitingApproval, setMobileMoneyAwaitingApproval] =
+    useState(false);
+  const [mobileMoneySubmitting, setMobileMoneySubmitting] = useState(false);
+  const [mobileMoneyStatusMessage, setMobileMoneyStatusMessage] = useState("");
   const barcodeInputRef = useRef(null);
   const receiptRef = useRef(null);
 
@@ -80,19 +90,7 @@ export const POSPage = () => {
       return response.data;
     },
     onSuccess: (response) => {
-      // Backend returns payload as { data: mappedSale }
-      setCompletedSale(response?.data || null);
-      setIsPaymentModalOpen(false);
-      setIsReceiptModalOpen(true);
-      queryClient.invalidateQueries(["dashboard-daily"]);
-      queryClient.invalidateQueries(["dashboard-weekly"]);
-      queryClient.invalidateQueries(["dashboard-sales"]);
-      queryClient.invalidateQueries(["sales"]);
-      queryClient.invalidateQueries(["products"]);
-      queryClient.invalidateQueries(["inventory"]);
-      queryClient.invalidateQueries(["customers"]);
-      queryClient.invalidateQueries(["customer-sales"]);
-      toast.success("Sale completed successfully!");
+      handleSaleCompleted(response?.data || null);
     },
     onError: (error) => {
       toast.error(
@@ -123,6 +121,17 @@ export const POSPage = () => {
     const total = grandTotal(discount).toFixed(2);
     // Non-cash must settle exact total; keep amount synced to total due.
     setAmountPaid(total);
+
+    if (method !== "MOBILE_MONEY") {
+      setIsMobileMoneyModalOpen(false);
+      setMobileMoneyPhoneNumber("");
+      setMobileMoneyOtp("");
+      setMobileMoneyReference("");
+      setMobileMoneyRequiresOtp(false);
+      setMobileMoneyAwaitingApproval(false);
+      setMobileMoneySubmitting(false);
+      setMobileMoneyStatusMessage("");
+    }
   };
 
   const handleScannerInputChange = (e) => {
@@ -155,11 +164,199 @@ export const POSPage = () => {
     clearCart();
     setIsReceiptModalOpen(false);
     setCompletedSale(null);
+    setIsPaymentModalOpen(false);
+    setIsMobileMoneyModalOpen(false);
     setDiscount(0);
     setAmountPaid("");
     setSelectedCustomerId("");
     setPaymentMethod("CASH");
+    setMobileMoneyPhoneNumber("");
+    setMobileMoneyOtp("");
+    setMobileMoneyReference("");
+    setMobileMoneyRequiresOtp(false);
+    setMobileMoneyAwaitingApproval(false);
+    setMobileMoneySubmitting(false);
+    setMobileMoneyStatusMessage("");
     barcodeInputRef.current?.focus();
+  };
+
+  function handleSaleCompleted(sale) {
+    setCompletedSale(sale || null);
+    setIsPaymentModalOpen(false);
+    setIsMobileMoneyModalOpen(false);
+    setIsReceiptModalOpen(true);
+    clearCart();
+    setMobileMoneyPhoneNumber("");
+    setMobileMoneyOtp("");
+    setMobileMoneyReference("");
+    setMobileMoneyRequiresOtp(false);
+    setMobileMoneyAwaitingApproval(false);
+    setMobileMoneySubmitting(false);
+    setMobileMoneyStatusMessage("");
+    queryClient.invalidateQueries(["dashboard-daily"]);
+    queryClient.invalidateQueries(["dashboard-weekly"]);
+    queryClient.invalidateQueries(["dashboard-sales"]);
+    queryClient.invalidateQueries(["sales"]);
+    queryClient.invalidateQueries(["products"]);
+    queryClient.invalidateQueries(["inventory"]);
+    queryClient.invalidateQueries(["customers"]);
+    queryClient.invalidateQueries(["customer-sales"]);
+    toast.success("Sale completed successfully!");
+  }
+
+  const pollMobileMoneyStatus = async (reference) => {
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      if (attempt > 0) {
+        await wait(5000);
+      }
+
+      try {
+        const verifyResponse = await apiClient.get(
+          `/payments/verify/${reference}`,
+        );
+        const paymentData = verifyResponse?.data?.data || {};
+        const status = String(
+          paymentData?.status || paymentData?.saleStatus || "",
+        ).toUpperCase();
+
+        if (paymentData?.sale?.status === "COMPLETED" || status === "SUCCESS") {
+          if (paymentData?.sale) {
+            handleSaleCompleted(paymentData.sale);
+            return;
+          }
+        }
+
+        if (status === "FAILED" || status === "CANCELLED") {
+          throw new Error(
+            paymentData?.failureReason ||
+              paymentData?.providerMessage ||
+              "Mobile money payment failed",
+          );
+        }
+
+        setMobileMoneyStatusMessage(
+          paymentData?.providerMessage ||
+            paymentData?.gatewayResponse ||
+            "Waiting for customer approval...",
+        );
+      } catch (error) {
+        if (attempt === 11) {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error(
+      "Payment timed out - ask customer to check their phone approvals",
+    );
+  };
+
+  const handleMobileMoneyStart = async () => {
+    const selectedCustomer = (customers?.data || []).find(
+      (customer) => customer.id === selectedCustomerId,
+    );
+
+    const response = await apiClient.post("/payments/initialize", {
+      amount: grandTotal(discount),
+      paymentMethod: "MOBILE_MONEY",
+      customerId: selectedCustomerId || null,
+      customerEmail: selectedCustomer?.email || null,
+      items: items.map((item) => ({
+        productId: item.productId,
+        productName: item.name,
+        barcode: item.barcode,
+        price: item.price,
+        taxRate: item.taxRate,
+        quantity: item.quantity,
+      })),
+      phoneNumber: mobileMoneyPhoneNumber,
+      discountAmount: discount,
+      metadata: {
+        source: "POS",
+      },
+    });
+
+    const paymentData = response?.data?.data || {};
+    const reference = paymentData?.reference;
+
+    if (!reference) {
+      throw new Error("Unable to initialize Paystack payment");
+    }
+
+    setMobileMoneyReference(reference);
+    setMobileMoneyStatusMessage(
+      paymentData?.providerMessage ||
+        "Payment prompt sent. Waiting for customer approval.",
+    );
+
+    const providerStatus = String(
+      paymentData?.providerStatus || paymentData?.status || "",
+    ).toUpperCase();
+
+    if (providerStatus === "SEND_OTP") {
+      setMobileMoneyRequiresOtp(true);
+      setMobileMoneyAwaitingApproval(false);
+      setMobileMoneyStatusMessage("Enter the OTP sent to the customer's phone.");
+      return;
+    }
+
+    setMobileMoneyRequiresOtp(false);
+    setMobileMoneyAwaitingApproval(true);
+    await pollMobileMoneyStatus(reference);
+  };
+
+  const handleMobileMoneySubmitOtp = async () => {
+    if (!mobileMoneyReference) {
+      throw new Error("Payment reference is missing");
+    }
+
+    if (!mobileMoneyOtp.trim()) {
+      throw new Error("Enter the OTP sent to the customer's phone");
+    }
+
+    const response = await apiClient.post("/payments/submit-otp", {
+      reference: mobileMoneyReference,
+      otp: mobileMoneyOtp.trim(),
+    });
+
+    const paymentData = response?.data?.data || {};
+    const status = String(paymentData?.status || "").toUpperCase();
+
+    if (status === "FAILED") {
+      throw new Error(paymentData?.gatewayResponse || "OTP submission failed");
+    }
+
+    setMobileMoneyRequiresOtp(false);
+    setMobileMoneyAwaitingApproval(true);
+    setMobileMoneyStatusMessage(
+      paymentData?.gatewayResponse ||
+        "Waiting for customer approval...",
+    );
+
+    await pollMobileMoneyStatus(mobileMoneyReference);
+  };
+
+  const handleMobileMoneyConfirm = async () => {
+    try {
+      setMobileMoneySubmitting(true);
+
+      if (mobileMoneyRequiresOtp) {
+        await handleMobileMoneySubmitOtp();
+        return;
+      }
+
+      await handleMobileMoneyStart();
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to process Paystack payment",
+      );
+    } finally {
+      setMobileMoneySubmitting(false);
+    }
   };
 
   const handleConfirmPayment = () => {
@@ -214,6 +411,25 @@ export const POSPage = () => {
       };
 
       return createSaleMutation.mutateAsync(saleData);
+    };
+
+    const openMobileMoneyModal = () => {
+      const selectedCustomer = (customers?.data || []).find(
+        (customer) => customer.id === selectedCustomerId,
+      );
+
+      setMobileMoneyPhoneNumber(selectedCustomer?.phone || "");
+      setMobileMoneyOtp("");
+      setMobileMoneyReference("");
+      setMobileMoneyRequiresOtp(false);
+      setMobileMoneyAwaitingApproval(false);
+      setMobileMoneySubmitting(false);
+      setMobileMoneyStatusMessage(
+        "Enter the customer's phone number to send the mobile money prompt.",
+      );
+
+      setIsPaymentModalOpen(false);
+      setIsMobileMoneyModalOpen(true);
     };
 
     const runNonCashFlow = async () => {
@@ -274,6 +490,11 @@ export const POSPage = () => {
 
     if (paymentMethod === "CASH") {
       submitSale(null);
+      return;
+    }
+
+    if (paymentMethod === "MOBILE_MONEY") {
+      openMobileMoneyModal();
       return;
     }
 
@@ -595,6 +816,33 @@ export const POSPage = () => {
           </div>
         </div>
       </Modal>
+
+      <MobileMoneyPaymentModal
+        isOpen={isMobileMoneyModalOpen}
+        onClose={() => {
+          if (!mobileMoneyAwaitingApproval) {
+            setIsMobileMoneyModalOpen(false);
+            setMobileMoneyPhoneNumber("");
+            setMobileMoneyOtp("");
+            setMobileMoneyReference("");
+            setMobileMoneyRequiresOtp(false);
+            setMobileMoneyAwaitingApproval(false);
+            setMobileMoneySubmitting(false);
+            setMobileMoneyStatusMessage("");
+          }
+        }}
+        amount={grandTotal(discount)}
+        phoneNumber={mobileMoneyPhoneNumber}
+        onPhoneNumberChange={setMobileMoneyPhoneNumber}
+        otp={mobileMoneyOtp}
+        onOtpChange={setMobileMoneyOtp}
+        onConfirm={handleMobileMoneyConfirm}
+        isSubmitting={mobileMoneySubmitting}
+        isAwaitingApproval={mobileMoneyAwaitingApproval}
+        statusMessage={mobileMoneyStatusMessage}
+        showOtpInput={mobileMoneyRequiresOtp}
+        confirmLabel={mobileMoneyRequiresOtp ? "Submit OTP" : "Confirm Payment"}
+      />
 
       {/* Receipt Modal */}
       <Modal

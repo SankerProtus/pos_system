@@ -115,6 +115,9 @@ export const salesService = {
         typeof reference === "string" && reference.trim() !== ""
           ? String(reference).trim()
           : null;
+      const paymentReference =
+        normalizedReference ||
+        `CASH-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
       const toCents = (amount) => Math.round(Number(amount) * 100);
       const totalAmountCents = toCents(totalAmount);
       const amountPaidCents = toCents(normalizedAmountPaid);
@@ -211,7 +214,8 @@ export const salesService = {
             method: normalizedPaymentMethod,
             amountPaid: normalizedAmountPaid,
             changeDue: Math.round(changeDue * 100) / 100,
-            reference: normalizedReference,
+            reference: paymentReference,
+            amount: totalAmount,
           },
         },
       };

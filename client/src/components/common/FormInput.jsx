@@ -17,7 +17,7 @@ export const FormInput = forwardRef(
       disabled = false,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <div className="w-full">
@@ -38,13 +38,15 @@ export const FormInput = forwardRef(
           <input
             ref={ref}
             id={id}
-            type={showPasswordToggle ? (showPassword ? "text" : "password") : type}
+            type={
+              showPasswordToggle ? (showPassword ? "text" : "password") : type
+            }
             disabled={disabled}
             className={`
-              w-full px-4 py-3 
+              w-full px-4 py-3
               ${Icon ? "pl-11" : ""}
-              bg-white border border-slate-300 
-              rounded-lg text-slate-900 
+              bg-white border border-slate-300
+              rounded-lg text-slate-900
               placeholder:text-slate-400
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
               disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed
@@ -74,7 +76,7 @@ export const FormInput = forwardRef(
         )}
       </div>
     );
-  }
+  },
 );
 
 FormInput.displayName = "FormInput";

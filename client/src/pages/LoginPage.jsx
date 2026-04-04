@@ -14,7 +14,11 @@ import {
 } from "../components/common";
 
 export const LoginPage = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     resolver: zodResolver(loginSchema),
   });
   const { login, loading, error } = useAuth();
@@ -73,12 +77,16 @@ export const LoginPage = () => {
   };
 
   const handleGoogleLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+    const apiUrl =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
     window.location.href = `${apiUrl}/auth/google`;
   };
 
   return (
-    <AuthLayout title="Welcome Back" subtitle="Sign in to access your POS system">
+    <AuthLayout
+      title="Welcome Back"
+      subtitle="Sign in to access your POS system"
+    >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Countdown Alert for rate limit */}
         {countdown > 0 && (
@@ -148,7 +156,11 @@ export const LoginPage = () => {
           icon={LogIn}
           disabled={loading || countdown > 0}
         >
-          {countdown > 0 ? `Try again in ${formatTime(countdown)}` : loading ? "Signing in..." : "Sign In"}
+          {countdown > 0
+            ? `Try again in ${formatTime(countdown)}`
+            : loading
+              ? "Signing in..."
+              : "Sign In"}
         </Button>
         {/* Divider */}
         <div className="relative py-3">

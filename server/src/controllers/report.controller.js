@@ -5,11 +5,9 @@ export const reportController = {
     try {
       const { date } = req.query;
       if (!date || isNaN(Date.parse(date))) {
-        return res
-          .status(400)
-          .json({
-            error: "Date query parameter is required and must be a valid date",
-          });
+        return res.status(400).json({
+          error: "Date query parameter is required and must be a valid date",
+        });
       }
       const report = await reportService.getDailyReport(date);
       res.status(200).json(report);
@@ -37,7 +35,6 @@ export const reportController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
-  // Added product report endpoint
   getProductReport: async (req, res) => {
     try {
       const { from, to } = req.query;
@@ -53,7 +50,6 @@ export const reportController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
-  // Added cashier report endpoint
   getCashierReport: async (req, res) => {
     try {
       const { date } = req.query;

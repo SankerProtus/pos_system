@@ -1,12 +1,14 @@
 import express from "express";
 import { reportController } from "../controllers/report.controller.js";
+import { authenticateToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
+// Apply auth middleware to all routes
+router.use(authenticateToken);
+
+// Basic Reports
 router.get("/daily", reportController.getDailyReport);
 router.get("/weekly", reportController.getWeeklyReport);
-router.get("/monthly", reportController.getMonthlyReport);
-router.get("/products", reportController.getProductReport);
-router.get("/cashiers", reportController.getCashierReport);
 
 export { router as reportRoutes };

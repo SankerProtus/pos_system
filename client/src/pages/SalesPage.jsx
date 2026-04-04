@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Topbar } from "../components/layout/Topbar";
 import { Button } from "../components/common/Button";
@@ -11,6 +11,10 @@ import { Receipt } from "../components/shared/Receipt";
 import { apiClient } from "../api/axios";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatDate } from "../utils/formatDate";
+import {
+  formatTransactionId,
+  resolveTransactionId,
+} from "../utils/formatTransactionId";
 import { Download, FileText, Ban } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRef } from "react";
@@ -24,6 +28,8 @@ export const SalesPage = () => {
   const [isVoidDialogOpen, setIsVoidDialogOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState(null);
   const [voidingSaleId, setVoidingSaleId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const receiptRef = useRef(null);
 
   const queryClient = useQueryClient();
@@ -85,6 +91,21 @@ export const SalesPage = () => {
       ) || 0;
 
   const getSalesRows = () => (Array.isArray(sales) ? sales : sales?.data || []);
+  const salesRows = getSalesRows();
+  const totalPages = Math.max(1, Math.ceil(salesRows.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFrom, dateTo, statusFilter]);
+
+  const paginatedSales = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return salesRows.slice(start, start + pageSize);
+  }, [salesRows, currentPage]);
 
   const csvEscape = (value) => {
     if (value === null || value === undefined) return "";
@@ -111,7 +132,7 @@ export const SalesPage = () => {
     ];
 
     const lines = rows.map((row) => [
-      row.receipt?.receiptNumber || "N/A",
+      getTxnId(row),
       row.createdAt ? formatDate.standard(row.createdAt) : "",
       row.user?.name || "N/A",
       row.customer?.name || "Walk-in",
@@ -162,14 +183,14 @@ export const SalesPage = () => {
     );
   };
 
+  const getTxnId = (row) => formatTransactionId(resolveTransactionId(row));
+
   const columns = [
     {
       key: "receiptNumber",
       header: "TXN ID",
       render: (row) => (
-        <span className="font-mono text-indigo-400">
-          {row.receipt?.receiptNumber || "N/A"}
-        </span>
+        <span className="font-mono text-indigo-400">{getTxnId(row)}</span>
       ),
     },
     {
@@ -304,9 +325,20 @@ export const SalesPage = () => {
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={Array.isArray(sales) ? sales : sales?.data || []}
+          data={paginatedSales}
           isLoading={isLoading}
           emptyMessage="No sales found"
+          pagination={
+            salesRows.length > pageSize
+              ? {
+                  currentPage,
+                  totalItems: salesRows.length,
+                  itemsPerPage: pageSize,
+                  onPageChange: setCurrentPage,
+                  itemLabel: "sales",
+                }
+              : undefined
+          }
         />
       </main>
 

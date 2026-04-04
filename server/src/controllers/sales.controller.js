@@ -1,4 +1,6 @@
 import { salesService } from "../services/sales.service.js";
+import { logger } from "../utils/logger.js";
+import { auditService } from "../services/audit.service.js";
 
 export const salesController = {
   getSales: async (req, res) => {
@@ -25,7 +27,7 @@ export const salesController = {
       const sales = await salesService.getSales({ limit, status, from, to });
       res.status(200).json({ data: sales });
     } catch (error) {
-      console.error("Error fetching sales:", error);
+      logger.error(`Error fetching sales: ${error?.message || error}`);
       res
         .status(500)
         .json({ error: "Internal server error, " + error.message });
@@ -37,18 +39,14 @@ export const salesController = {
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized: User ID missing" });
       }
-      console.log("[sales.createSale] request received", {
-        paymentMethod: req.body?.paymentMethod,
-        customerId: req.body?.customerId || null,
-        itemCount: Array.isArray(req.body?.items) ? req.body.items.length : 0,
-      });
+      logger.info(
+        `[sales.createSale] request paymentMethod=${req.body?.paymentMethod || "UNKNOWN"} itemCount=${Array.isArray(req.body?.items) ? req.body.items.length : 0}`,
+      );
       const saleData = { ...req.body, userId };
       const newSale = await salesService.createSale(saleData);
-      console.log("[sales.createSale] sale created", {
-        saleId: newSale.id,
-        totalAmount: newSale.totalAmount,
-        status: newSale.status,
-      });
+      logger.info(
+        `[sales.createSale] sale created saleId=${newSale.id} totalAmount=${newSale.totalAmount} status=${newSale.status}`,
+      );
 
       // Map backend sale object to exact frontend Receipt shape
       const mappedSale = {
@@ -110,7 +108,7 @@ export const salesController = {
               createdAt: newSale.receipt.createdAt || null,
             }
           : {
-              receiptNumber: "N/A",
+              receiptNumber: newSale.payment?.reference || newSale.id || "N/A",
               storeName: "",
               storeAddress: "",
               storeTaxId: "",
@@ -119,9 +117,24 @@ export const salesController = {
               createdAt: null,
             },
       };
+      await auditService.log({
+        userId,
+        action: "SALE_CREATE",
+        targetType: "Sale",
+        targetId: newSale.id,
+        after: {
+          status: newSale.status,
+          totalAmount: Number(newSale.totalAmount) || 0,
+          paymentMethod: newSale.payment?.method || null,
+          paymentReference: newSale.payment?.reference || null,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent") || null,
+      });
+
       res.status(201).json({ data: mappedSale });
     } catch (error) {
-      console.error("Error creating sale:", error);
+      logger.error(`Error creating sale: ${error?.message || error}`);
       const message = error?.message || error?.cause?.message || "";
       if (
         message.includes("Insufficient stock") ||
@@ -146,9 +159,22 @@ export const salesController = {
         return res.status(401).json({ error: "Unauthorized: User ID missing" });
       }
       const voidedSale = await salesService.voidSale(saleId, userId);
+
+      await auditService.log({
+        userId,
+        action: "SALE_VOID",
+        targetType: "Sale",
+        targetId: saleId,
+        after: {
+          status: voidedSale?.status || "VOIDED",
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent") || null,
+      });
+
       res.status(200).json({ data: voidedSale });
     } catch (error) {
-      console.error("Error voiding sale:", error);
+      logger.error(`Error voiding sale: ${error?.message || error}`);
       res
         .status(500)
         .json({ error: "Internal server error, " + error.message });

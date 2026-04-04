@@ -47,7 +47,7 @@ export const ResendVerificationPage = () => {
       }, 1000);
     } catch (err) {
       setError(
-        err.message || "Failed to resend verification email. Please try again."
+        err.message || "Failed to resend verification email. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -101,7 +101,9 @@ export const ResendVerificationPage = () => {
             <div className="text-center">
               <p className="text-sm text-slate-500">
                 You can request another code in{" "}
-                <span className="font-semibold text-slate-700">{cooldown}s</span>
+                <span className="font-semibold text-slate-700">
+                  {cooldown}s
+                </span>
               </p>
             </div>
           )}
@@ -174,8 +176,8 @@ export const ResendVerificationPage = () => {
           {cooldown > 0
             ? `Wait ${cooldown}s`
             : loading
-            ? "Sending..."
-            : "Send Verification Email"}
+              ? "Sending..."
+              : "Send Verification Email"}
         </Button>
 
         {/* Already have a code? */}

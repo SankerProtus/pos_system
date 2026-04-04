@@ -1,4 +1,6 @@
 import { salesRepository } from "../repositories/sales.repository.js";
+import { prisma } from "../lib/Prisma.js";
+import { logger } from "../utils/logger.js";
 
 export const salesService = {
   getSales: async (data) => {
@@ -19,7 +21,7 @@ export const salesService = {
         paymentMethod: sale.payment?.method || null,
       }));
     } catch (error) {
-      console.error("Error fetching sales:", error);
+      logger.error(`Error fetching sales: ${error?.message || error}`);
       throw new Error("Internal server error", { cause: error });
     }
   },
@@ -171,6 +173,29 @@ export const salesService = {
           );
         }
 
+        const existingPayment = await prisma.payment.findUnique({
+          where: { reference: normalizedReference },
+          include: {
+            sale: {
+              include: {
+                user: true,
+                customer: true,
+                saleItems: true,
+                payment: true,
+                receipt: true,
+              },
+            },
+          },
+        });
+
+        if (existingPayment?.sale?.status === "COMPLETED") {
+          return existingPayment.sale;
+        }
+
+        if (existingPayment) {
+          throw new Error("Payment reference has already been used");
+        }
+
         const { paystackService } = await import("./paystack.service.js");
         const verified =
           await paystackService.verifyTransaction(normalizedReference);
@@ -219,49 +244,15 @@ export const salesService = {
           },
         },
       };
-      // Create the sale
+      // Create sale + payment + inventory + receipt atomically in one DB transaction.
       const newSale = await salesRepository.createSale(salePayload);
-      console.log("New sale created:", newSale);
+      logger.info(`New sale created: ${newSale.id}`);
 
-      // Generate a unique receipt number
-      const today = new Date();
-      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-      const shortId = newSale.id.slice(-4).toUpperCase();
-      const receiptNumber = `RCP-${dateStr}-${shortId}`;
-
-      // Fetch user and customer for receipt fields
-      const userName = newSale.user?.name || "";
-      const customerName = newSale.customer?.name || null;
-
-      // Store info for receipt
-      const storeName = process.env.STORE_NAME || "SwiftPOS Retail";
-      const storeAddress = process.env.STORE_ADDRESS || "123 Main Street";
-      const storeTaxId = process.env.STORE_TAX_ID || "TAX-123456";
-
-      // Create the receipt using the repository
-      const receipt = await salesRepository.createReceipt({
-        saleId: newSale.id,
-        receiptNumber,
-        storeName,
-        storeAddress,
-        storeTaxId,
-        cashierName: userName,
-        customerName,
-        items: newSale.saleItems.map((item) => ({
-          productName: item.productName,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          subtotal: item.subtotal,
-        })),
-      });
-
-      // Return the sale with the attached receipt
       return {
         ...newSale,
-        receipt,
       };
     } catch (error) {
-      console.error("Error creating sale:", error);
+      logger.error(`Error creating sale: ${error?.message || error}`);
       const message = error?.message || error?.cause?.message || "";
       if (
         message.includes("Insufficient stock") ||
@@ -279,6 +270,7 @@ export const salesService = {
         message.includes(
           "Amount paid must match total amount for card payments",
         ) ||
+        message.includes("Payment reference has already been used") ||
         message.includes("Payment not successful on Paystack") ||
         message.includes("Verified payment amount does not match sale total") ||
         message.includes("Paystack")
@@ -294,7 +286,7 @@ export const salesService = {
       const voidedSale = await salesRepository.voidSale(saleId, userId);
       return voidedSale;
     } catch (error) {
-      console.error("Error voiding sale:", error);
+      logger.error(`Error voiding sale: ${error?.message || error}`);
       throw new Error("Internal server error", { cause: error });
     }
   },

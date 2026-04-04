@@ -1,4 +1,5 @@
 import { prisma } from "../lib/Prisma.js";
+import { logger } from "../utils/logger.js";
 
 export const salesRepository = {
   getAllSales: async (data = {}) => {
@@ -56,32 +57,17 @@ export const salesRepository = {
     const saleItems = saleData?.saleItems?.create || [];
     const userId = saleData?.user?.connect?.id || null;
     const customerId = saleData?.customer?.connect?.id || null;
+    const paymentCreate = saleData?.payment?.create;
 
-    console.log("[salesRepository.createSale] begin", {
-      itemCount: saleItems.length,
-      userId,
-      customerId,
-      paymentMethod: saleData?.payment?.create?.method || null,
-    });
+    logger.info(
+      `[salesRepository.createSale] begin itemCount=${saleItems.length} paymentMethod=${saleData?.payment?.create?.method || "UNKNOWN"}`,
+    );
+
+    if (!paymentCreate) {
+      throw new Error("Payment data is required for atomic sale creation");
+    }
 
     return await prisma.$transaction(async (tx) => {
-      // Validate inventory availability for each sale line before creating sale
-      for (const item of saleItems) {
-        const inventory = await tx.inventory.findUnique({
-          where: { productId: item.productId },
-        });
-
-        if (!inventory) {
-          throw new Error(`Inventory not found for product: ${item.productId}`);
-        }
-
-        if (inventory.quantity < item.quantity) {
-          throw new Error(
-            `Insufficient stock for product ${item.productName || item.productId}`,
-          );
-        }
-      }
-
       const newSale = await tx.sale.create({
         data: saleData,
         include: {
@@ -92,34 +78,54 @@ export const salesRepository = {
         },
       });
 
-      console.log("[salesRepository.createSale] sale row created", {
-        saleId: newSale.id,
-        saleItems: newSale.saleItems.length,
-      });
+      logger.info(
+        `[salesRepository.createSale] sale row created saleId=${newSale.id} items=${newSale.saleItems.length}`,
+      );
 
       // Apply inventory movements and audit records after sale creation
       for (const item of saleItems) {
-        const inventory = await tx.inventory.findUnique({
+        const decrementResult = await tx.inventory.updateMany({
+          where: {
+            productId: item.productId,
+            quantity: { gte: item.quantity },
+          },
+          data: {
+            quantity: {
+              decrement: item.quantity,
+            },
+          },
+        });
+
+        if (decrementResult.count === 0) {
+          const inventory = await tx.inventory.findUnique({
+            where: { productId: item.productId },
+          });
+          if (!inventory) {
+            throw new Error(
+              `Inventory not found for product: ${item.productId}`,
+            );
+          }
+
+          throw new Error(
+            `Insufficient stock for product ${item.productName || item.productId}`,
+          );
+        }
+
+        const inventoryAfter = await tx.inventory.findUnique({
           where: { productId: item.productId },
         });
-        const quantityBefore = inventory.quantity;
-        const quantityAfter = quantityBefore - item.quantity;
 
-        await tx.inventory.update({
-          where: { id: inventory.id },
-          data: { quantity: quantityAfter },
-        });
+        const quantityAfter = inventoryAfter?.quantity ?? 0;
+        const quantityBefore = quantityAfter + Number(item.quantity);
 
-        console.log("[salesRepository.createSale] inventory updated", {
-          productId: item.productId,
-          quantityBefore,
-          quantityAfter,
-        });
+        logger.info(
+          `[salesRepository.createSale] inventory updated productId=${item.productId} before=${quantityBefore} after=${quantityAfter}`,
+        );
 
         if (userId) {
           await tx.stockAdjustment.create({
             data: {
-              inventoryId: inventory.id,
+              inventoryId: inventoryAfter.id,
               productId: item.productId,
               userId,
               reason: "SALE",
@@ -148,17 +154,47 @@ export const salesRepository = {
             },
           });
 
-          console.log("[salesRepository.createSale] loyalty points updated", {
-            customerId,
-            pointsEarned,
-          });
+          logger.info(
+            `[salesRepository.createSale] loyalty points updated customerId=${customerId} points=${pointsEarned}`,
+          );
         }
       }
 
-      console.log("[salesRepository.createSale] transaction complete", {
-        saleId: newSale.id,
+      const dateStr = newSale.createdAt
+        .toISOString()
+        .slice(0, 10)
+        .replace(/-/g, "");
+      const shortId = newSale.id.slice(-4).toUpperCase();
+      const receiptNumber = `RCP-${dateStr}-${shortId}`;
+      const storeName = process.env.STORE_NAME || "SwiftPOS Retail";
+      const storeAddress = process.env.STORE_ADDRESS || "123 Main Street";
+      const storeTaxId = process.env.STORE_TAX_ID || "TAX-123456";
+
+      const receipt = await tx.receipt.create({
+        data: {
+          saleId: newSale.id,
+          receiptNumber,
+          storeName,
+          storeAddress,
+          storeTaxId,
+          cashierName: newSale.user?.name || "",
+          customerName: newSale.customer?.name || null,
+          items: newSale.saleItems.map((item) => ({
+            productName: item.productName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            subtotal: item.subtotal,
+          })),
+        },
       });
-      return newSale;
+
+      logger.info(
+        `[salesRepository.createSale] transaction complete saleId=${newSale.id}`,
+      );
+      return {
+        ...newSale,
+        receipt,
+      };
     });
   },
   getSalesByDate: async (date) => {
@@ -199,7 +235,7 @@ export const salesRepository = {
     });
   },
   voidSale: async (saleId, actorUserId) => {
-    console.log("[salesRepository.voidSale] begin", { saleId, actorUserId });
+    logger.info(`[salesRepository.voidSale] begin saleId=${saleId}`);
     return await prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
@@ -228,11 +264,9 @@ export const salesRepository = {
           data: { quantity: quantityAfter },
         });
 
-        console.log("[salesRepository.voidSale] inventory restored", {
-          productId: item.productId,
-          quantityBefore,
-          quantityAfter,
-        });
+        logger.info(
+          `[salesRepository.voidSale] inventory restored productId=${item.productId} before=${quantityBefore} after=${quantityAfter}`,
+        );
 
         const adjustmentUserId = actorUserId || sale.userId || null;
         if (adjustmentUserId) {

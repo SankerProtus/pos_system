@@ -1,12 +1,7 @@
 import { useMemo, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { EmptyState } from "../common/EmptyState";
+import { Pagination } from "./Pagination";
 import { cn } from "../../utils/cn";
 
 // A flexible table component that displays tabular dat with support for loading states, empty states, row click handling, and pagination.
@@ -230,27 +225,13 @@ export const DataTable = ({
       </div>
 
       {pagination && (
-        <div className="px-4 py-3 border-t border-[#1e2d45] flex items-center justify-between">
-          <p className="text-sm text-slate-400">
-            Page {pagination.page} of {pagination.totalPages}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => pagination.onPageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="px-3 py-1.5 rounded-lg bg-[#0f172a] border border-[#1e2d45] text-slate-300 hover:bg-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={() => pagination.onPageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-              className="px-3 py-1.5 rounded-lg bg-[#0f172a] border border-[#1e2d45] text-slate-300 hover:bg-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          totalItems={pagination.totalItems ?? pagination.total ?? 0}
+          itemsPerPage={pagination.itemsPerPage ?? pagination.limit ?? 1}
+          currentPage={pagination.currentPage ?? pagination.page ?? 1}
+          onPageChange={pagination.onPageChange}
+          itemLabel={pagination.itemLabel || "items"}
+        />
       )}
     </div>
   );

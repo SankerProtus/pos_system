@@ -13,7 +13,9 @@ export const authRateLimiter = rateLimit({
   legacyHeaders: false,
   handler: (_req, res, _next, options) => {
     const now = Date.now();
-    const resetTime = options.resetTime ? options.resetTime.getTime() : now + options.windowMs;
+    const resetTime = options.resetTime
+      ? options.resetTime.getTime()
+      : now + options.windowMs;
     const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);
 
     res.setHeader("Retry-After", retryAfter);
@@ -32,12 +34,77 @@ export const loginRateLimiter = rateLimit({
   legacyHeaders: false,
   handler: (_req, res, _next, options) => {
     const now = Date.now();
-    const resetTime = options.resetTime ? options.resetTime.getTime() : now + options.windowMs;
+    const resetTime = options.resetTime
+      ? options.resetTime.getTime()
+      : now + options.windowMs;
     const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);
 
     res.setHeader("Retry-After", retryAfter);
     res.status(429).json({
       message: "Too many login attempts",
+      retryAfter,
+    });
+  },
+});
+
+// Payment Initialize Rate Limiter
+export const paymentInitializeRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res, _next, options) => {
+    const now = Date.now();
+    const resetTime = options.resetTime
+      ? options.resetTime.getTime()
+      : now + options.windowMs;
+    const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);
+
+    res.setHeader("Retry-After", retryAfter);
+    res.status(429).json({
+      message: "Too many payment initialization attempts",
+      retryAfter,
+    });
+  },
+});
+
+// Payment OTP Submission Rate Limiter
+export const paymentOtpRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res, _next, options) => {
+    const now = Date.now();
+    const resetTime = options.resetTime
+      ? options.resetTime.getTime()
+      : now + options.windowMs;
+    const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);
+
+    res.setHeader("Retry-After", retryAfter);
+    res.status(429).json({
+      message: "Too many OTP submission attempts",
+      retryAfter,
+    });
+  },
+});
+
+// Payment Verify Polling Rate Limiter
+export const paymentVerifyRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res, _next, options) => {
+    const now = Date.now();
+    const resetTime = options.resetTime
+      ? options.resetTime.getTime()
+      : now + options.windowMs;
+    const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);
+
+    res.setHeader("Retry-After", retryAfter);
+    res.status(429).json({
+      message: "Too many payment status checks",
       retryAfter,
     });
   },

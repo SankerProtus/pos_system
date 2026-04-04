@@ -470,8 +470,10 @@ async function main() {
       data: {
         saleId: sale.id,
         method: saleSeed.payment.method,
+        amount: saleSeed.totalAmount,
         amountPaid: saleSeed.payment.amountPaid,
         changeDue: saleSeed.payment.changeDue,
+        reference: `SEED-PAY-${String(saleIndex).padStart(4, "0")}`,
       },
     });
     const uniqueReceiptNumber = `RCP-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(saleIndex).padStart(4, "0")}`;

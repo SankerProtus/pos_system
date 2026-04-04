@@ -1,20 +1,35 @@
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { Topbar } from "../components/layout/Topbar";
 import { KpiCard } from "../components/shared/KpiCard";
-import { BarChart } from "../components/shared/BarChart";
-import { DonutChart } from "../components/shared/DonutChart";
 import { DataTable } from "../components/shared/DataTable";
 import { Badge } from "../components/common/Badge";
 import { Loader } from "../components/common/Loader";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatDate } from "../utils/formatDate";
+import {
+  formatTransactionId,
+  resolveTransactionId,
+} from "../utils/formatTransactionId";
 import { apiClient } from "../api/axios";
 import { API_ENDPOINTS } from "../constants/index.js";
 import toast from "react-hot-toast";
 
+const BarChart = lazy(() =>
+  import("../components/shared/BarChart").then((module) => ({
+    default: module.BarChart,
+  })),
+);
+const DonutChart = lazy(() =>
+  import("../components/shared/DonutChart").then((module) => ({
+    default: module.DonutChart,
+  })),
+);
+
 export const DashboardPage = () => {
   const today = formatDate.iso(new Date());
+  const [recentPage, setRecentPage] = useState(1);
+  const recentPageSize = 5;
 
   const {
     data: dailyData,
@@ -23,9 +38,12 @@ export const DashboardPage = () => {
   } = useQuery({
     queryKey: ["dashboard-daily", today],
     queryFn: async () => {
-      const response = await apiClient.get(API_ENDPOINTS.DASHBOARD.GET_DAILY.replace(":date", today));
+      const response = await apiClient.get(
+        API_ENDPOINTS.DASHBOARD.GET_DAILY.replace(":date", today),
+      );
       return response.data;
     },
+    staleTime: 5 * 60 * 1000,
     retry: 1,
     retryDelay: 1000,
   });
@@ -40,6 +58,7 @@ export const DashboardPage = () => {
       const response = await apiClient.get(API_ENDPOINTS.DASHBOARD.GET_WEEKLY);
       return response.data;
     },
+    staleTime: 5 * 60 * 1000,
     retry: 1,
     retryDelay: 1000,
   });
@@ -50,9 +69,25 @@ export const DashboardPage = () => {
       const response = await apiClient.get(API_ENDPOINTS.DASHBOARD.GET_SALES);
       return response.data;
     },
+    staleTime: 5 * 60 * 1000,
     retry: 1,
     retryDelay: 1000,
   });
+
+  const recentSalesRows = useMemo(
+    () => (Array.isArray(salesData?.data) ? salesData.data : []),
+    [salesData],
+  );
+  const recentSalesTotalPages = Math.max(
+    1,
+    Math.ceil(recentSalesRows.length / recentPageSize),
+  );
+  const safeRecentPage = Math.min(recentPage, recentSalesTotalPages);
+
+  const paginatedRecentSales = useMemo(() => {
+    const start = (safeRecentPage - 1) * recentPageSize;
+    return recentSalesRows.slice(start, start + recentPageSize);
+  }, [recentSalesRows, safeRecentPage]);
 
   // Handle errors
   useEffect(() => {
@@ -126,14 +161,14 @@ export const DashboardPage = () => {
       }))
     : [];
 
+  const getTxnId = (row) => formatTransactionId(resolveTransactionId(row));
+
   const salesColumns = [
     {
       key: "receiptNumber",
       header: "TXN ID",
       render: (row) => (
-        <span className="font-mono text-indigo-400">
-          {row?.receipt?.receiptNumber || "N/A"}
-        </span>
+        <span className="font-mono text-indigo-400">{getTxnId(row)}</span>
       ),
     },
     {
@@ -203,13 +238,29 @@ export const DashboardPage = () => {
               <h3 className="text-lg font-semibold text-slate-100 mb-4">
                 Weekly Sales
               </h3>
-              <BarChart data={weeklyChartData} color="#6366f1" height={250} />
+              <Suspense
+                fallback={
+                  <div className="flex h-62.5 items-center justify-center rounded-xl border border-dashed border-[#263548] bg-[#0f172a] text-sm text-slate-500">
+                    Loading chart...
+                  </div>
+                }
+              >
+                <BarChart data={weeklyChartData} color="#6366f1" height={250} />
+              </Suspense>
             </div>
             <div className="bg-[#141d2e] border border-[#1e2d45] rounded-xl p-5">
               <h3 className="text-lg font-semibold text-slate-100 mb-4">
                 Payment Methods
               </h3>
-              <DonutChart segments={paymentSegments} />
+              <Suspense
+                fallback={
+                  <div className="flex h-50 items-center justify-center rounded-xl border border-dashed border-[#263548] bg-[#0f172a] text-sm text-slate-500">
+                    Loading chart...
+                  </div>
+                }
+              >
+                <DonutChart segments={paymentSegments} />
+              </Suspense>
             </div>
           </div>
 
@@ -224,9 +275,20 @@ export const DashboardPage = () => {
               </div>
               <DataTable
                 columns={salesColumns}
-                data={Array.isArray(salesData?.data) ? salesData.data : []}
+                data={paginatedRecentSales}
                 isLoading={isSalesLoading}
                 emptyMessage="No sales today"
+                pagination={
+                  recentSalesRows.length > recentPageSize
+                    ? {
+                        currentPage: safeRecentPage,
+                        totalItems: recentSalesRows.length,
+                        itemsPerPage: recentPageSize,
+                        onPageChange: setRecentPage,
+                        itemLabel: "transactions",
+                      }
+                    : undefined
+                }
               />
             </div>
             <div className="lg:col-span-2">

@@ -45,7 +45,9 @@ export const ResetPasswordPage = () => {
 
     // Validate email
     if (!emailFromUrl) {
-      setError("Email address is missing. Please use the link from your email.");
+      setError(
+        "Email address is missing. Please use the link from your email.",
+      );
       return;
     }
 
@@ -70,8 +72,12 @@ export const ResetPasswordPage = () => {
     setLoading(true);
 
     try {
-      console.log("Resetting password:", { email: emailFromUrl, code, newPassword });
-      
+      console.log("Resetting password:", {
+        email: emailFromUrl,
+        code,
+        newPassword,
+      });
+
       await authApi.resetPassword({
         email: emailFromUrl,
         code,
@@ -80,18 +86,18 @@ export const ResetPasswordPage = () => {
 
       setSuccess(true);
       toast.success("Password reset successful! Redirecting to login...");
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate("/login");
       }, 2000);
     } catch (err) {
       console.error("Password reset error:", err);
-      
-      const errorMessage = err.details 
-        ? err.details.map(d => `${d.path}: ${d.msg}`).join(", ")
+
+      const errorMessage = err.details
+        ? err.details.map((d) => `${d.path}: ${d.msg}`).join(", ")
         : err.error || err.message || "Invalid reset code. Please try again.";
-      
+
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {

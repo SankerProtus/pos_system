@@ -31,9 +31,7 @@ export const ForgotPasswordPage = () => {
       await authApi.forgotPassword(data.email);
       setSuccess(true);
     } catch (err) {
-      setError(
-        err.message || "Failed to send reset link. Please try again."
-      );
+      setError(err.message || "Failed to send reset link. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -72,7 +70,11 @@ export const ForgotPasswordPage = () => {
             variant="primary"
             size="lg"
             fullWidth
-            onClick={() => navigate(`/reset-password?email=${encodeURIComponent(getValues("email"))}`)}
+            onClick={() =>
+              navigate(
+                `/reset-password?email=${encodeURIComponent(getValues("email"))}`,
+              )
+            }
           >
             Enter Reset Code
           </Button>

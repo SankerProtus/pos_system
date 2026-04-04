@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import {
   LoginPage,
@@ -8,15 +8,6 @@ import {
   ResetPasswordPage,
   ResendVerificationPage,
   AuthCallbackPage,
-  DashboardPage,
-  POSPage,
-  ProductsPage,
-  InventoryPage,
-  CustomersPage,
-  SalesPage,
-  ReportsPage,
-  UsersPage,
-  SettingsPage,
 } from "./pages/index.js";
 import { Loader } from "./components/common/Loader.jsx";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute.jsx";
@@ -24,7 +15,63 @@ import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const queryClient = new QueryClient();
+const DashboardPage = lazy(() =>
+  import("./pages/DashboardPage.jsx").then((module) => ({
+    default: module.DashboardPage,
+  })),
+);
+const POSPage = lazy(() =>
+  import("./pages/POSPage.jsx").then((module) => ({
+    default: module.POSPage,
+  })),
+);
+const SalesPage = lazy(() =>
+  import("./pages/SalesPage.jsx").then((module) => ({
+    default: module.SalesPage,
+  })),
+);
+const CustomersPage = lazy(() =>
+  import("./pages/CustomersPage.jsx").then((module) => ({
+    default: module.CustomersPage,
+  })),
+);
+const ProductsPage = lazy(() =>
+  import("./pages/ProductsPage.jsx").then((module) => ({
+    default: module.ProductsPage,
+  })),
+);
+const InventoryPage = lazy(() =>
+  import("./pages/InventoryPage.jsx").then((module) => ({
+    default: module.InventoryPage,
+  })),
+);
+const ReportsPage = lazy(() =>
+  import("./pages/ReportsPage.jsx").then((module) => ({
+    default: module.ReportsPage,
+  })),
+);
+const UsersPage = lazy(() =>
+  import("./pages/UsersPage.jsx").then((module) => ({
+    default: module.UsersPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage.jsx").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   return (

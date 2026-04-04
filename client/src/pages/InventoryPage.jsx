@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Topbar } from "../components/layout/Topbar";
@@ -22,6 +22,8 @@ export const InventoryPage = () => {
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [receiveProductId, setReceiveProductId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const queryClient = useQueryClient();
   const {
@@ -234,6 +236,24 @@ export const InventoryPage = () => {
         );
       });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredInventory.length / pageSize),
+  );
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  const paginatedInventory = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredInventory.slice(start, start + pageSize);
+  }, [filteredInventory, currentPage]);
+
   const columns = [
     {
       key: "product",
@@ -407,20 +427,31 @@ export const InventoryPage = () => {
               placeholder="Search by product, SKU, category, or supplier"
             />
           </div>
-          <p className="text-xs text-slate-400">
-            Showing {filteredInventory.length} of {inventoryRows.length} items
-          </p>
         </div>
 
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={filteredInventory}
+          data={paginatedInventory}
           isLoading={isLoading}
           emptyMessage={
             normalizedSearch
               ? "No inventory items match your search"
               : "No inventory items found"
+          }
+          pagination={
+            filteredInventory.length > pageSize
+              ? {
+                  currentPage,
+                  totalItems: filteredInventory.length,
+                  itemsPerPage: pageSize,
+                  onPageChange: (page) => {
+                    const safePage = Math.min(Math.max(page, 1), totalPages);
+                    setCurrentPage(safePage);
+                  },
+                  itemLabel: "items",
+                }
+              : undefined
           }
         />
       </main>

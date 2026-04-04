@@ -401,6 +401,8 @@ model Sale {
   @@index([customerId])
   @@index([status])
   @@index([createdAt])              // Essential for all date-range report queries
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
   @@map("sales")
 }
 
@@ -422,6 +424,7 @@ model SaleItem {
 
   @@index([saleId])
   @@index([productId])
+  @@index([productId, saleId])
   @@map("sale_items")
 }
 
@@ -455,7 +458,10 @@ model Payment {
   webhookEvents PaymentWebhookEvent[]
 
   @@index([method])
+  @@index([status])
   @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([providerStatus, createdAt])
   @@map("payments")
 }
 

@@ -35,7 +35,7 @@ export const productsRepository = {
       },
     });
   },
-  getAllProducts: async ({ categoryId, search } = {}) => {
+  getAllProducts: async ({ categoryId, search, page, limit } = {}) => {
     const where = {
       ...(categoryId ? { categoryId } : {}),
       ...(search
@@ -48,35 +48,69 @@ export const productsRepository = {
           }
         : {}),
     };
-  
-    return await prisma.product.findMany({
+
+    const select = {
+      id: true,
+      productName: true,
+      sku: true,
+      barcode: true,
+      description: true,
+      imageUrl: true,
+      price: true,
+      costPrice: true,
+      taxRate: true,
+      category: true,
+      inventory: {
+        select: {
+          quantity: true,
+          lowStockLevel: true,
+          reorderPoint: true,
+        },
+      },
+      saleItems: true,
+      stockAdjustments: true,
+      supplierProducts: true,
+      createdAt: true,
+      updatedAt: true,
+    };
+
+    const normalizedPage = Number(page) > 0 ? Number(page) : null;
+    const normalizedLimit = Number(limit) > 0 ? Number(limit) : null;
+
+    if (normalizedPage && normalizedLimit) {
+      const [items, total] = await Promise.all([
+        prisma.product.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: (normalizedPage - 1) * normalizedLimit,
+          take: normalizedLimit,
+          select,
+        }),
+        prisma.product.count({ where }),
+      ]);
+
+      return {
+        items,
+        total,
+        page: normalizedPage,
+        limit: normalizedLimit,
+        totalPages: Math.max(Math.ceil(total / normalizedLimit), 1),
+      };
+    }
+
+    const items = await prisma.product.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        productName: true,
-        sku: true,
-        barcode: true,
-        description: true,
-        imageUrl: true,
-        price: true,
-        costPrice: true,
-        taxRate: true,
-        category: true,
-        inventory: {
-          select: {
-            quantity: true,
-            lowStockLevel: true,
-            reorderPoint: true,
-          },
-        },
-        saleItems: true,
-        stockAdjustments: true,
-        supplierProducts: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select,
     });
+
+    return {
+      items,
+      total: items.length,
+      page: 1,
+      limit: items.length || 0,
+      totalPages: 1,
+    };
   },
   getProductById: async (id) => {
     return await prisma.product.findUnique({ where: { id } });

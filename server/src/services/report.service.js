@@ -1,9 +1,22 @@
 import { reportRepository } from "../repositories/report.repository.js";
+import { createTtlCache } from "../lib/ttlCache.js";
+
+const reportCache = createTtlCache({
+  defaultTtlMs: 30 * 1000,
+  maxEntries: 200,
+});
 
 export const reportService = {
   getDailyReport: async (dateStamp) => {
     try {
+      const cacheKey = `daily:${dateStamp}`;
+      const cached = reportCache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       const report = await reportRepository.getDailyReport(dateStamp);
+      reportCache.set(cacheKey, report);
       return report;
     } catch (error) {
       console.error("Error fetching daily report:", error);
@@ -34,7 +47,15 @@ export const reportService = {
   },
   getWeeklyReport: async (weekStart) => {
     try {
+      const normalizedWeekStart = weekStart || "current";
+      const cacheKey = `weekly:${normalizedWeekStart}`;
+      const cached = reportCache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       const report = await reportRepository.getWeeklyReport(weekStart);
+      reportCache.set(cacheKey, report);
       return report;
     } catch (error) {
       console.error("Error fetching weekly report:", error);

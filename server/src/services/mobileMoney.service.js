@@ -13,27 +13,74 @@ const DEFAULT_CUSTOMER_EMAIL =
 const toMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
 const toCents = (value) => Math.round((Number(value) || 0) * 100);
 
+const createBadRequestError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+};
+
 const normalizePhoneNumber = (phoneNumber) => {
   const raw = String(phoneNumber || "").trim();
   const normalized = raw.replace(/[\s()-]/g, "");
+
   if (!/^\+?[0-9]{10,15}$/.test(normalized)) {
-    throw new Error("Provide a valid phone number in international format");
+    throw createBadRequestError(
+      "Provide a valid Ghana phone number (e.g. 024..., +23324..., or 23324...)",
+    );
   }
-  return normalized;
+
+  if (/^\+233\d{9}$/.test(normalized)) {
+    return normalized;
+  }
+
+  if (/^233\d{9}$/.test(normalized)) {
+    return `+${normalized}`;
+  }
+
+  if (/^00233\d{9}$/.test(normalized)) {
+    return `+${normalized.slice(2)}`;
+  }
+
+  if (/^0\d{9}$/.test(normalized)) {
+    return `+233${normalized.slice(1)}`;
+  }
+
+  if (/^\d{9}$/.test(normalized)) {
+    return `+233${normalized}`;
+  }
+
+  return normalized.startsWith("+") ? normalized : `+${normalized}`;
 };
 
 const resolveMomoProvider = (network, phoneNumber) => {
-  const normalizedNetwork = String(network || "").trim().toLowerCase();
-  if (["mtn", "vodafone", "tigo"].includes(normalizedNetwork)) {
-    return normalizedNetwork;
+  const normalizedNetwork = String(network || "")
+    .trim()
+    .toLowerCase();
+  const networkAliasMap = {
+    mtn: "mtn",
+    vodafone: "vodafone",
+    telecel: "vodafone",
+    tigo: "tigo",
+    airtel: "tigo",
+    airteltigo: "tigo",
+    at: "tigo",
+  };
+
+  if (networkAliasMap[normalizedNetwork]) {
+    return networkAliasMap[normalizedNetwork];
   }
 
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
-  const localPhone = normalizedPhone.startsWith("+233")
-    ? `0${normalizedPhone.slice(4)}`
-    : normalizedPhone.replace(/^\+/, "");
+  const digitsOnly = normalizedPhone.replace(/^\+/, "");
+  const localPhone = digitsOnly.startsWith("233")
+    ? `0${digitsOnly.slice(3)}`
+    : digitsOnly.startsWith("0")
+      ? digitsOnly
+      : /^\d{9}$/.test(digitsOnly)
+        ? `0${digitsOnly}`
+        : digitsOnly;
 
-  if (/^0?(24|54|55|59)/.test(localPhone)) {
+  if (/^0?(24|25|53|54|55|59)/.test(localPhone)) {
     return "mtn";
   }
 
@@ -41,11 +88,13 @@ const resolveMomoProvider = (network, phoneNumber) => {
     return "vodafone";
   }
 
-  if (/^0?(26|27|56|57)/.test(localPhone)) {
+  if (/^0?(26|27|28|56|57)/.test(localPhone)) {
     return "tigo";
   }
 
-  throw new Error("Unable to detect mobile money provider from phone number");
+  throw createBadRequestError(
+    "Unable to detect mobile money provider from phone number",
+  );
 };
 
 const mapSaleForReceipt = (sale) => {
@@ -198,6 +247,33 @@ const markTimedOutIfNeeded = async (reference) => {
   });
 };
 
+const hasCustomerCancellationSignal = (providerMessage, verifiedData) => {
+  const messageCandidates = [
+    providerMessage,
+    verifiedData?.gateway_response,
+    verifiedData?.message,
+    verifiedData?.display_text,
+  ]
+    .map((value) => String(value || "").toLowerCase())
+    .filter(Boolean);
+
+  const cancellationPatterns = [
+    /cancel(?:led)?/,
+    /declin(?:ed|e)/,
+    /denied/,
+    /rejected/,
+    /abandon(?:ed)?/,
+    /customer.*(cancel|decline|reject|deny)/,
+    /(cancel|decline|reject|deny).*customer/,
+    /not approved/,
+    /failed by user/,
+  ];
+
+  return messageCandidates.some((message) =>
+    cancellationPatterns.some((pattern) => pattern.test(message)),
+  );
+};
+
 const reconcilePendingPaymentWithProvider = async (reference) => {
   const payment = await prisma.payment.findUnique({
     where: { reference },
@@ -278,8 +354,14 @@ const reconcilePendingPaymentWithProvider = async (reference) => {
     "abandoned",
     "reversed",
     "cancelled",
+    "canceled",
   ]);
-  if (failedStatuses.has(providerStatus)) {
+  const isCustomerCancelled = hasCustomerCancellationSignal(
+    providerMessage,
+    verifiedData,
+  );
+
+  if (failedStatuses.has(providerStatus) || isCustomerCancelled) {
     await prisma.$transaction(async (tx) => {
       const latestPayment = await tx.payment.findUnique({
         where: { reference },
@@ -293,7 +375,11 @@ const reconcilePendingPaymentWithProvider = async (reference) => {
         where: { id: latestPayment.id },
         data: {
           status: "FAILED",
-          providerStatus: String(providerStatus).slice(0, 50).toUpperCase(),
+          providerStatus: String(
+            failedStatuses.has(providerStatus) ? providerStatus : "cancelled",
+          )
+            .slice(0, 50)
+            .toUpperCase(),
           failureReason: String(providerMessage || "Payment failed").slice(
             0,
             500,
@@ -336,9 +422,9 @@ const applySaleCompletion = async (tx, paymentWithSale) => {
     throw new Error("Sale not found during payment finalization");
   }
 
-    if (sale.status === "COMPLETED") {
-      return;
-    }
+  if (sale.status === "COMPLETED") {
+    return;
+  }
 
   for (const item of sale.saleItems) {
     const inventory = await tx.inventory.findUnique({

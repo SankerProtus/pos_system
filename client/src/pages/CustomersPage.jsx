@@ -1,19 +1,23 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { Topbar } from '../components/layout/Topbar';
-import { Button } from '../components/common/Button';
-import { DataTable } from '../components/shared/DataTable';
-import { SearchInput } from '../components/shared/SearchInput';
-import { KpiCard } from '../components/shared/KpiCard';
-import { Modal } from '../components/common/Modal';
-import { FormInput } from '../components/common/FormInput';
-import { Badge } from '../components/common/Badge';
-import { apiClient } from '../api/axios';
-import { formatCurrency } from '../utils/formatCurrency';
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { Topbar } from "../components/layout/Topbar";
+import { Button } from "../components/common/Button";
+import { DataTable } from "../components/shared/DataTable";
+import { SearchInput } from "../components/shared/SearchInput";
+import { KpiCard } from "../components/shared/KpiCard";
+import { Modal } from "../components/common/Modal";
+import { FormInput } from "../components/common/FormInput";
+import { Badge } from "../components/common/Badge";
+import { apiClient } from "../api/axios";
+import { formatCurrency } from "../utils/formatCurrency";
 import { formatDate } from "../utils/formatDate";
-import { UserPlus, History } from 'lucide-react';
-import toast from 'react-hot-toast';
+import {
+  formatTransactionId,
+  resolveTransactionId,
+} from "../utils/formatTransactionId";
+import { UserPlus, History } from "lucide-react";
+import toast from "react-hot-toast";
 
 export const CustomersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,9 +26,18 @@ export const CustomersPage = () => {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const pageSize = 10;
+  const historyPageSize = 5;
 
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -35,37 +48,73 @@ export const CustomersPage = () => {
   }, [searchTerm]);
 
   const { data: customers, isLoading } = useQuery({
-    queryKey: ['customers', { search: debouncedSearchTerm }],
+    queryKey: ["customers", { search: debouncedSearchTerm }],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm);
+      if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
       const response = await apiClient.get(`/customers?${params}`);
       return response.data;
     },
   });
 
   const { data: customerSales } = useQuery({
-    queryKey: ['customer-sales', selectedCustomerId],
+    queryKey: ["customer-sales", selectedCustomerId],
     queryFn: async () => {
-      const response = await apiClient.get(`/customers/${selectedCustomerId}/sales`);
+      const response = await apiClient.get(
+        `/customers/${selectedCustomerId}/sales`,
+      );
       return response.data;
     },
     enabled: !!selectedCustomerId,
   });
 
+  const customerRows = customers?.data || [];
+  const totalPages = Math.max(1, Math.ceil(customerRows.length / pageSize));
+  const customerSalesRows = customerSales || [];
+  const historyTotalPages = Math.max(
+    1,
+    Math.ceil(customerSalesRows.length / historyPageSize),
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [selectedCustomerId]);
+
+  useEffect(() => {
+    setHistoryPage((prev) => Math.min(prev, historyTotalPages));
+  }, [historyTotalPages]);
+
+  const paginatedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return customerRows.slice(start, start + pageSize);
+  }, [customerRows, currentPage]);
+
+  const paginatedCustomerSales = useMemo(() => {
+    const start = (historyPage - 1) * historyPageSize;
+    return customerSalesRows.slice(start, start + historyPageSize);
+  }, [customerSalesRows, historyPage]);
+
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const response = await apiClient.post('/customers', data);
+      const response = await apiClient.post("/customers", data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['customers']);
-      toast.success('Customer created successfully');
+      queryClient.invalidateQueries(["customers"]);
+      toast.success("Customer created successfully");
       setIsFormModalOpen(false);
       reset();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to create customer');
+      toast.error(error.response?.data?.message || "Failed to create customer");
     },
   });
 
@@ -75,14 +124,14 @@ export const CustomersPage = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['customers']);
-      toast.success('Customer updated successfully');
+      queryClient.invalidateQueries(["customers"]);
+      toast.success("Customer updated successfully");
       setIsFormModalOpen(false);
       setEditingCustomer(null);
       reset();
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Failed to update customer');
+      toast.error(error.response?.data?.message || "Failed to update customer");
     },
   });
 
@@ -111,16 +160,19 @@ export const CustomersPage = () => {
     }
   };
 
-  const totalCustomers = customers?.data?.length || 0;
-  const totalLoyaltyPoints = customers?.data?.reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0) || 0;
-  const avgSpend = totalCustomers > 0
-    ? customers?.data?.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / totalCustomers
-    : 0;
+  const totalCustomers = customerRows.length;
+  const totalLoyaltyPoints =
+    customerRows.reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0) || 0;
+  const avgSpend =
+    totalCustomers > 0
+      ? customerRows.reduce((sum, c) => sum + (c.totalSpent || 0), 0) /
+        totalCustomers
+      : 0;
 
   const columns = [
     {
-      key: 'customer',
-      header: 'Customer',
+      key: "customer",
+      header: "Customer",
       render: (row) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-semibold">
@@ -134,20 +186,18 @@ export const CustomersPage = () => {
       ),
     },
     {
-      key: 'email',
-      header: 'Email',
-      render: (row) => row.email || 'N/A',
+      key: "email",
+      header: "Email",
+      render: (row) => row.email || "N/A",
     },
     {
-      key: 'loyaltyPoints',
-      header: 'Loyalty Pts',
-      render: (row) => (
-        <Badge variant="amber">{row.loyaltyPoints || 0}</Badge>
-      ),
+      key: "loyaltyPoints",
+      header: "Loyalty Pts",
+      render: (row) => <Badge variant="amber">{row.loyaltyPoints || 0}</Badge>,
     },
     {
-      key: 'totalSpent',
-      header: 'Total Spent',
+      key: "totalSpent",
+      header: "Total Spent",
       render: (row) => (
         <span className="font-mono text-emerald-400">
           {formatCurrency(row.totalSpent || 0)}
@@ -155,18 +205,18 @@ export const CustomersPage = () => {
       ),
     },
     {
-      key: 'visitCount',
-      header: 'Visits',
+      key: "visitCount",
+      header: "Visits",
       render: (row) => <span className="font-mono">{row.visitCount || 0}</span>,
     },
     {
-      key: 'createdAt',
-      header: 'Member Since',
+      key: "createdAt",
+      header: "Member Since",
       render: (row) => formatDate.standard(row.createdAt),
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       render: (row) => (
         <div className="flex gap-2">
           <Button
@@ -191,35 +241,43 @@ export const CustomersPage = () => {
 
   const salesColumns = [
     {
-      key: 'createdAt',
-      header: 'Date',
+      key: "createdAt",
+      header: "Date",
       render: (row) => formatDate.standard(row.createdAt),
     },
     {
-      key: 'receiptNumber',
-      header: 'TXN ID',
-      render: (row) => <span className="font-mono text-indigo-400">{row.receiptNumber}</span>,
-    },
-    {
-      key: 'items',
-      header: 'Items',
-      render: (row) => row.items?.length || 0,
-    },
-    {
-      key: 'totalAmount',
-      header: 'Amount',
+      key: "receiptNumber",
+      header: "TXN ID",
       render: (row) => (
-        <span className="font-mono text-amber-400">{formatCurrency(row.totalAmount)}</span>
+        <span className="font-mono text-indigo-400">
+          {formatTransactionId(resolveTransactionId(row))}
+        </span>
       ),
     },
     {
-      key: 'paymentMethod',
-      header: 'Method',
+      key: "items",
+      header: "Items",
+      render: (row) => row.items?.length || 0,
+    },
+    {
+      key: "totalAmount",
+      header: "Amount",
+      render: (row) => (
+        <span className="font-mono text-amber-400">
+          {formatCurrency(row.totalAmount)}
+        </span>
+      ),
+    },
+    {
+      key: "paymentMethod",
+      header: "Method",
       render: (row) => <Badge variant="indigo">{row.paymentMethod}</Badge>,
     },
   ];
 
-  const selectedCustomer = customers?.data?.find((c) => c.id === selectedCustomerId);
+  const selectedCustomer = customers?.data?.find(
+    (c) => c.id === selectedCustomerId,
+  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -272,9 +330,20 @@ export const CustomersPage = () => {
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={customers?.data || []}
+          data={paginatedCustomers}
           isLoading={isLoading}
           emptyMessage="No customers found"
+          pagination={
+            customerRows.length > pageSize
+              ? {
+                  currentPage,
+                  totalItems: customerRows.length,
+                  itemsPerPage: pageSize,
+                  onPageChange: setCurrentPage,
+                  itemLabel: "customers",
+                }
+              : undefined
+          }
         />
       </main>
 
@@ -398,7 +467,10 @@ export const CustomersPage = () => {
                     Visits
                   </p>
                   <p className="text-xl font-bold font-mono text-emerald-400">
-                    {console.log("Selected customer visits", selectedCustomer.visitCount)}
+                    {console.log(
+                      "Selected customer visits",
+                      selectedCustomer.visitCount,
+                    )}
                     {selectedCustomer.visitCount || 0}
                   </p>
                 </div>
@@ -406,8 +478,19 @@ export const CustomersPage = () => {
 
               <DataTable
                 columns={salesColumns}
-                data={customerSales?.slice(0, 10) || []}
+                data={paginatedCustomerSales}
                 emptyMessage="No purchase history"
+                pagination={
+                  customerSalesRows.length > historyPageSize
+                    ? {
+                        currentPage: historyPage,
+                        totalItems: customerSalesRows.length,
+                        itemsPerPage: historyPageSize,
+                        onPageChange: setHistoryPage,
+                        itemLabel: "sales",
+                      }
+                    : undefined
+                }
               />
             </>
           )}

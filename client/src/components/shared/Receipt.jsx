@@ -2,9 +2,16 @@ import { forwardRef } from "react";
 import Barcode from "react-barcode";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { formatDate } from "../../utils/formatDate";
+import {
+  formatTransactionId,
+  resolveTransactionId,
+} from "../../utils/formatTransactionId";
 
 export const Receipt = forwardRef(
   ({ sale, storeName, storeTIN, storeAddress }, ref) => {
+    const rawTxnId = resolveTransactionId(sale);
+    const displayTxnId = formatTransactionId(rawTxnId);
+
     const receiptItems =
       Array.isArray(sale?.items) && sale.items.length > 0
         ? sale.items
@@ -39,7 +46,7 @@ export const Receipt = forwardRef(
           </div>
           <div className="flex justify-between">
             <span>TXN:</span>
-            <span>{sale.receipt?.receiptNumber}</span>
+            <span title={rawTxnId}>{displayTxnId}</span>
           </div>
           <div className="flex justify-between">
             <span>Cashier:</span>
@@ -124,10 +131,10 @@ export const Receipt = forwardRef(
         </div>
 
         {/* Receipt barcode (transaction) */}
-        {sale.receipt?.receiptNumber && (
+        {rawTxnId !== "N/A" && (
           <div className="mt-4 flex justify-center items-center w-full">
             <Barcode
-              value={sale.receipt.receiptNumber}
+              value={rawTxnId}
               width={1.5}
               height={50}
               fontSize={15}

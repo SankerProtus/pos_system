@@ -4,7 +4,12 @@ export const posController = {
   checkout: async (req, res) => {
     try {
       const { items, paymentMethod, customerId } = req.body;
-      const sale = await posService.checkout(items, paymentMethod, customerId);
+      const sale = await posService.checkout(
+        items,
+        paymentMethod,
+        customerId,
+        req.user?.id,
+      );
       res.status(201).json(sale);
     } catch (error) {
       console.error("Checkout error:", error);

@@ -314,9 +314,6 @@ export const UsersPage = () => {
               placeholder="Search by name, email, role, or status"
             />
           </div>
-          <p className="text-xs text-slate-400">
-            Showing {paginatedUsers.length} of {filteredUsers.length} users
-          </p>
         </div>
 
         {/* Data Table */}
@@ -329,12 +326,14 @@ export const UsersPage = () => {
           pagination={
             filteredUsers.length > pageSize
               ? {
-                  page: currentPage,
-                  totalPages,
+                  currentPage,
+                  totalItems: filteredUsers.length,
+                  itemsPerPage: pageSize,
                   onPageChange: (page) => {
                     const safePage = Math.min(Math.max(page, 1), totalPages);
                     setCurrentPage(safePage);
                   },
+                  itemLabel: "users",
                 }
               : undefined
           }

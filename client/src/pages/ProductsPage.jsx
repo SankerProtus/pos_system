@@ -15,6 +15,8 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { Plus, Edit, Trash2, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
+const PAGE_SIZE = 8;
+
 const csvEscape = (value) => {
   const text = value == null ? "" : String(value);
   return `"${text.replace(/"/g, '""')}"`;
@@ -51,6 +53,7 @@ export const ProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -76,19 +79,40 @@ export const ProductsPage = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, selectedCategory]);
+
   const { data: products, isLoading } = useQuery({
     queryKey: [
       "products",
-      { search: debouncedSearchTerm, categoryId: selectedCategory },
+      {
+        search: debouncedSearchTerm,
+        categoryId: selectedCategory,
+        page: currentPage,
+        limit: PAGE_SIZE,
+      },
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
       if (selectedCategory) params.append("categoryId", selectedCategory);
+      params.append("page", String(currentPage));
+      params.append("limit", String(PAGE_SIZE));
       const response = await apiClient.get(`/products?${params}`);
       return response.data;
     },
   });
+
+  const paginationMeta = products?.meta || {};
+  const totalProducts = Number(paginationMeta.total || 0);
+  const totalPages = Number(paginationMeta.totalPages || 1);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [totalPages]);
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -343,8 +367,10 @@ export const ProductsPage = () => {
       []),
   ];
 
+  const productRows = products?.data || [];
+
   const handleExportCsv = () => {
-    const rows = products?.data || [];
+    const rows = productRows;
 
     if (!rows.length) {
       toast.error("No products to export");
@@ -479,10 +505,21 @@ export const ProductsPage = () => {
         {/* Data Table */}
         <DataTable
           columns={columns}
-          data={products?.data || []}
+          data={productRows}
           isLoading={isLoading}
           emptyMessage="No products found"
           cellClassName="whitespace-nowrap px-4 py-3 text-sm text-slate-300"
+          pagination={
+            totalProducts > PAGE_SIZE
+              ? {
+                  currentPage,
+                  totalItems: totalProducts,
+                  itemsPerPage: PAGE_SIZE,
+                  onPageChange: setCurrentPage,
+                  itemLabel: "products",
+                }
+              : undefined
+          }
         />
       </main>
 

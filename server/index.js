@@ -17,6 +17,7 @@ import { settingsRouter } from "./src/routes/settings.routes.js";
 import { paymentsRoutes } from "./src/routes/payments.routes.js";
 import passport from "./src/config/PassportConfig.js";
 import { setupTrustProxy } from "./src/utils/rateLimiter.js";
+import { prisma } from "./src/lib/Prisma.js";
 
 dotenv.config();
 
@@ -67,6 +68,29 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/health-check", (req, res) => {
   res.status(200).json({ message: "Server is healthy!" });
+});
+
+app.get("/healthz", async (req, res) => {
+  const startedAt = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({
+      status: "ok",
+      uptimeSeconds: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+      db: "up",
+      latencyMs: Date.now() - startedAt,
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "degraded",
+      uptimeSeconds: Math.round(process.uptime()),
+      timestamp: new Date().toISOString(),
+      db: "down",
+      latencyMs: Date.now() - startedAt,
+      error: error?.message || "Database connectivity failed",
+    });
+  }
 });
 
 // Routes

@@ -60,8 +60,11 @@ export const POSPage = () => {
     useState(false);
   const [mobileMoneySubmitting, setMobileMoneySubmitting] = useState(false);
   const [mobileMoneyStatusMessage, setMobileMoneyStatusMessage] = useState("");
+  const [previewImage, setPreviewImage] = useState(null);
   const barcodeInputRef = useRef(null);
   const receiptRef = useRef(null);
+  const productItemRefs = useRef([]);
+  const cartItemRefs = useRef([]);
   const shortcutStateRef = useRef({
     isPaymentModalOpen: false,
     isMobileMoneyModalOpen: false,
@@ -155,11 +158,36 @@ export const POSPage = () => {
     staleTime: 10 * 60 * 1000,
   });
 
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: async () => {
+      const response = await apiClient.get("/settings");
+      return response.data;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
   const productRows = Array.isArray(products?.data) ? products.data : [];
+  const getProductImage = (product) => product?.imageUrl || "/no-image.jpg";
+  const getCartItemImage = (item) =>
+    item?.imageUrl ||
+    getProductImage(
+      productRows.find((product) => product.id === item?.productId),
+    ) ||
+    "/no-image.jpg";
   const totalProductPages = Math.max(products?.meta?.totalPages || 1, 1);
   const totalProductCount = Number(products?.meta?.total || productRows.length);
   const activeProduct = productRows[selectedProductIndex] || null;
   const selectedCartItem = items[selectedCartIndex] || null;
+  const receiptStoreName =
+    completedSale?.receipt?.storeName || settings?.storeName || "";
+  const receiptStoreTIN =
+    completedSale?.receipt?.storeTaxId ||
+    settings?.storeTaxId ||
+    settings?.vatTIN ||
+    "";
+  const receiptStoreAddress =
+    completedSale?.receipt?.storeAddress || settings?.storeAddress || "";
 
   useEffect(() => {
     setProductPage((currentPage) => Math.min(currentPage, totalProductPages));
@@ -174,10 +202,31 @@ export const POSPage = () => {
   }, [productRows.length]);
 
   useEffect(() => {
+    const selectedProductElement =
+      productItemRefs.current[selectedProductIndex];
+    if (selectedProductElement) {
+      selectedProductElement.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [selectedProductIndex, productRows.length]);
+
+  useEffect(() => {
     setSelectedCartIndex((currentIndex) =>
       items.length === 0 ? 0 : Math.min(currentIndex, items.length - 1),
     );
   }, [items.length]);
+
+  useEffect(() => {
+    const selectedCartElement = cartItemRefs.current[selectedCartIndex];
+    if (selectedCartElement) {
+      selectedCartElement.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [selectedCartIndex, items.length]);
 
   const clearSearch = () => {
     setSearchTerm("");
@@ -898,34 +947,16 @@ export const POSPage = () => {
   const change = parseFloat(amountPaid || 0) - grandTotal(discount);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#080e1a]">
+    <div className="flex-1 min-h-0 flex flex-col bg-[#080e1a]">
       <Topbar title="POS Terminal" subtitle="Point of Sale" />
-      <div className="flex-1 overflow-hidden px-3 pb-3 pt-3 lg:px-4">
-        <div className="grid h-full min-h-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <section className="min-h-0 flex flex-col gap-3 rounded-2xl border border-[#1e2d45] bg-[#09111f] p-3 shadow-[0_24px_60px_rgba(2,8,23,0.45)] sm:p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 pt-3 xl:overflow-hidden lg:px-4">
+        <div className="grid min-h-0 grid-cols-1 gap-3 xl:h-full xl:grid-cols-[minmax(0,1fr)_380px]">
+          <section className="flex flex-col gap-3 rounded-2xl border border-[#1e2d45] bg-[#09111f] p-3 shadow-[0_24px_60px_rgba(2,8,23,0.45)] xl:min-h-0 sm:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-amber-400/90">
-                  Scan, search, and add
-                </p>
                 <h1 className="mt-1 text-2xl font-semibold text-slate-50">
                   Quick Checkout
                 </h1>
-                <p className="mt-1 text-sm text-slate-400">
-                  Press / to focus search, Enter to add the highlighted item,
-                  and Ctrl+Enter or F4 to open payment.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="amber">
-                  {totalProductCount.toLocaleString()} items
-                </Badge>
-                <Badge variant="indigo">{itemCount()} in cart</Badge>
-                <Badge variant={isProductsFetching ? "green" : "muted"}>
-                  {isProductsFetching
-                    ? "Refreshing"
-                    : `Page ${productPage}/${totalProductPages}`}
-                </Badge>
               </div>
             </div>
 
@@ -987,23 +1018,14 @@ export const POSPage = () => {
               ))}
             </div>
 
-            <div className="rounded-2xl border border-[#1e2d45] bg-[#0a1628]/80 px-4 py-3 text-sm text-slate-400">
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <span>Enter: add highlighted item</span>
-                <span>Alt+↑/↓: move cart selection</span>
-                <span>+/-: adjust selected quantity</span>
-                <span>Delete: remove selected cart item</span>
-                <span>Ctrl+Enter or F4: payment</span>
+            {categoriesError && (
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+                Categories did not load. You can still search and complete
+                sales.
               </div>
-              {categoriesError && (
-                <p className="mt-2 text-amber-300">
-                  Categories did not load. You can still search and complete
-                  sales.
-                </p>
-              )}
-            </div>
+            )}
 
-            <div className="min-h-0 flex-1 flex flex-col">
+            <div className="flex flex-col xl:min-h-0 xl:flex-1">
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-100">
@@ -1023,7 +1045,7 @@ export const POSPage = () => {
               </div>
 
               <div
-                className="min-h-0 flex-1 overflow-y-auto pr-1 pos-scrollbar"
+                className="pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto pos-scrollbar"
                 tabIndex={0}
                 onKeyDown={handleProductGridKeyDown}
               >
@@ -1072,6 +1094,9 @@ export const POSPage = () => {
                       return (
                         <button
                           key={product.id}
+                          ref={(element) => {
+                            productItemRefs.current[index] = element;
+                          }}
                           type="button"
                           onClick={() => addProductToCart(product)}
                           onFocus={() => setSelectedProductIndex(index)}
@@ -1087,6 +1112,27 @@ export const POSPage = () => {
                               : "border-[#1e2d45] bg-[#141d2e] hover:border-indigo-500 hover:bg-[#172338]"
                           }`}
                         >
+                          <div
+                            className="mb-3 cursor-zoom-in overflow-hidden rounded-xl border border-[#263548] bg-[#0f172a]"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setPreviewImage({
+                                url: getProductImage(product),
+                                name: product.productName || product.name,
+                              });
+                            }}
+                          >
+                            <img
+                              src={getProductImage(product)}
+                              alt={product.productName || product.name}
+                              className="h-24 w-full object-cover"
+                              onError={(event) => {
+                                event.currentTarget.onerror = null;
+                                event.currentTarget.src = "/no-image.png";
+                              }}
+                            />
+                          </div>
                           <h4 className="mb-1 line-clamp-2 text-sm font-semibold text-slate-100">
                             {product.productName || product.name}
                           </h4>
@@ -1134,28 +1180,17 @@ export const POSPage = () => {
             </div>
           </section>
 
-          <aside className="min-h-0 flex flex-col overflow-hidden rounded-2xl border border-[#1e2d45] bg-[#0f172a] shadow-[0_24px_60px_rgba(2,8,23,0.45)] xl:sticky xl:top-3">
+          <aside className="flex flex-col rounded-2xl border border-[#1e2d45] bg-[#0f172a] shadow-[0_24px_60px_rgba(2,8,23,0.45)] xl:min-h-0 xl:overflow-hidden xl:sticky xl:top-3">
             <div className="border-b border-[#1e2d45] px-4 py-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-100">Cart</h3>
-                  <p className="text-sm text-slate-500">
-                    Press Alt+↑/↓ to move between items.
-                  </p>
                 </div>
                 <Badge variant="amber">{itemCount()}</Badge>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 border-b border-[#1e2d45] px-4 py-3 text-xs text-slate-400">
-              <span className="rounded-full bg-[#141d2e] px-3 py-1 text-slate-300">
-                {selectedCartItem
-                  ? `Selected: ${selectedCartItem.name}`
-                  : "No item selected"}
-              </span>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-3 pos-scrollbar">
+            <div className="flex-1 p-4 space-y-3 xl:min-h-0 xl:overflow-y-auto pos-scrollbar">
               {items.length === 0 ? (
                 <EmptyState
                   title="Cart is empty"
@@ -1171,6 +1206,9 @@ export const POSPage = () => {
                   return (
                     <div
                       key={item.productId}
+                      ref={(element) => {
+                        cartItemRefs.current[index] = element;
+                      }}
                       role="button"
                       tabIndex={0}
                       onClick={() => setSelectedCartIndex(index)}
@@ -1184,9 +1222,33 @@ export const POSPage = () => {
                       }`}
                     >
                       <div className="mb-2 flex items-start justify-between gap-2">
-                        <h4 className="flex-1 text-sm font-medium text-slate-100">
-                          {item.name}
-                        </h4>
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPreviewImage({
+                                url: getCartItemImage(item),
+                                name: item.name,
+                              });
+                            }}
+                            className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[#263548] bg-[#0f172a]"
+                            aria-label={`Preview ${item.name}`}
+                          >
+                            <img
+                              src={getCartItemImage(item)}
+                              alt={item.name}
+                              className="h-full w-full object-cover"
+                              onError={(event) => {
+                                event.currentTarget.onerror = null;
+                                event.currentTarget.src = "/no-image.png";
+                              }}
+                            />
+                          </button>
+                          <h4 className="flex-1 text-sm font-medium text-slate-100">
+                            {item.name}
+                          </h4>
+                        </div>
                         <button
                           type="button"
                           onClick={(event) => {
@@ -1464,9 +1526,9 @@ export const POSPage = () => {
             <Receipt
               ref={receiptRef}
               sale={completedSale}
-              storeName={completedSale?.receipt?.storeName || ""}
-              storeTIN={completedSale?.receipt?.storeTaxId || ""}
-              storeAddress={completedSale?.receipt?.storeAddress || ""}
+              storeName={receiptStoreName}
+              storeTIN={receiptStoreTIN}
+              storeAddress={receiptStoreAddress}
             />
           )}
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1481,6 +1543,27 @@ export const POSPage = () => {
             >
               New Sale →
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(previewImage)}
+        onClose={() => setPreviewImage(null)}
+        title={previewImage?.name || "Product Preview"}
+        width={560}
+      >
+        <div className="p-5">
+          <div className="overflow-hidden rounded-xl border border-[#263548] bg-[#0f172a]">
+            <img
+              src={previewImage?.url || "/no-image.jpg"}
+              alt={previewImage?.name || "Product image"}
+              className="max-h-[70vh] w-full object-contain"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = "/no-image.png";
+              }}
+            />
           </div>
         </div>
       </Modal>

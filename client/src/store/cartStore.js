@@ -2,11 +2,42 @@ import { create } from "zustand";
 
 const CART_STORAGE_KEY = "pos_cart_items";
 
+const resolveImageUrl = (record) => {
+  const candidates = [
+    record?.imageUrl,
+    record?.imageURL,
+    record?.image,
+    record?.thumbnail,
+    record?.thumbnailUrl,
+    record?.photo,
+    record?.photoUrl,
+    record?.image?.url,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+};
+
+const normalizeCartItem = (item) => ({
+  ...item,
+  imageUrl: resolveImageUrl(item),
+});
+
 // Load cart from localStorage
 const loadCart = () => {
   try {
     const stored = localStorage.getItem(CART_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map(normalizeCartItem);
   } catch {
     return [];
   }
@@ -25,11 +56,16 @@ export const useCartStore = create((set, get) => ({
   addItem: (product) => {
     const items = get().items;
     const existingItem = items.find((item) => item.productId === product.id);
+    const productImageUrl = resolveImageUrl(product);
     let newItems;
     if (existingItem) {
       newItems = items.map((item) =>
         item.productId === product.id
-          ? { ...item, quantity: item.quantity + 1 }
+          ? {
+              ...item,
+              quantity: item.quantity + 1,
+              imageUrl: item.imageUrl || productImageUrl,
+            }
           : item,
       );
     } else {
@@ -39,6 +75,7 @@ export const useCartStore = create((set, get) => ({
           productId: product.id,
           name: product.productName || product.name,
           barcode: product.barcode,
+          imageUrl: productImageUrl,
           price: product.price,
           taxRate: product.taxRate || 0,
           quantity: 1,

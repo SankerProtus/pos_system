@@ -46,6 +46,25 @@ export const SalesPage = () => {
     },
   });
 
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: async () => {
+      const response = await apiClient.get("/settings");
+      return response.data;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const receiptStoreName =
+    selectedSale?.receipt?.storeName || settings?.storeName || "";
+  const receiptStoreTIN =
+    selectedSale?.receipt?.storeTaxId ||
+    settings?.storeTaxId ||
+    settings?.vatTIN ||
+    "";
+  const receiptStoreAddress =
+    selectedSale?.receipt?.storeAddress || settings?.storeAddress || "";
+
   const voidSaleMutation = useMutation({
     mutationFn: async ({ id, reason }) => {
       const response = await apiClient.post(`/sales/${id}/void`, { reason });
@@ -358,9 +377,9 @@ export const SalesPage = () => {
               <Receipt
                 ref={receiptRef}
                 sale={selectedSale}
-                storeName={selectedSale?.receipt?.storeName || ""}
-                storeTIN={selectedSale?.receipt?.storeTaxId || ""}
-                storeAddress={selectedSale?.receipt?.storeAddress || ""}
+                storeName={receiptStoreName}
+                storeTIN={receiptStoreTIN}
+                storeAddress={receiptStoreAddress}
               />
               <div className="flex justify-around align-middle mt-6 gap-2 mx-auto">
                 <Button variant="ghost" onClick={handlePrint}>

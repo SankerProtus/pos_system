@@ -10,7 +10,9 @@ export const generateToken = (user, options = {}) => {
 
   const payload = {
     id: user.id,
+    name: user.name,
     email: user.email,
+    profileImageUrl: user.profileImageUrl || null,
     role: user.role,
     jti,
   };
@@ -28,22 +30,4 @@ export const generateToken = (user, options = {}) => {
     refreshToken,
     jti,
   };
-};
-
-/**
- * Verify a JWT token
- */
-export const verifyToken = (token, secret) => {
-  try {
-    return jwt.verify(token, secret);
-  } catch (error) {
-    throw error;
-  }
-};
-
-/**
- * Decode a JWT token without verification
- */
-export const decodeToken = (token) => {
-  return jwt.decode(token);
 };

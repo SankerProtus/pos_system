@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -13,6 +14,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { cn } from "../../utils/cn";
+import { UserAvatar } from "../shared/UserAvatar";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 
 const MENU_CONFIG = [
   {
@@ -74,10 +77,15 @@ const MENU_CONFIG = [
 export const Sidebar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleLogoutClick = () => {
+    setIsLogoutConfirmOpen(true);
   };
 
   const filteredMenu = MENU_CONFIG.filter((item) =>
@@ -140,9 +148,12 @@ export const Sidebar = () => {
       {/* Footer */}
       <div className="px-4 py-4 border-t border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-teal-700 flex items-center justify-center text-white font-semibold text-sm">
-            {user?.name?.charAt(0).toUpperCase()}
-          </div>
+          <UserAvatar
+            name={user?.name}
+            imageUrl={user?.profileImageUrl}
+            className="w-9 h-9 text-sm"
+            fallbackClassName="bg-teal-700"
+          />
           <div className="flex-1 min-w-0">
             <p className="truncate text-xs uppercase tracking-wide text-slate-500">
               Signed in
@@ -154,7 +165,7 @@ export const Sidebar = () => {
           </div>
 
           <button
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className="text-base text-slate-400 hover:text-white transition"
             title="Logout"
           >
@@ -162,6 +173,16 @@ export const Sidebar = () => {
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={isLogoutConfirmOpen}
+        onClose={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={handleLogout}
+        title="Log Out"
+        message="Are you sure you want to log out from this account?"
+        confirmLabel="Log Out"
+        confirmVariant="danger"
+      />
     </aside>
   );
 };

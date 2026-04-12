@@ -44,6 +44,9 @@ export const salesRepository = {
     return await prisma.sale.findMany({
       where,
       take: Number.isInteger(parseLimit) ? parseLimit : undefined,
+      orderBy: {
+        createdAt: "desc",
+      },
       include: {
         user: true,
         customer: true,

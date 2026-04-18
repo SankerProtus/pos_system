@@ -19,12 +19,32 @@ import toast from "react-hot-toast";
 import { Receipt } from "../components/shared/Receipt";
 import { MobileMoneyPaymentModal } from "../components/shared/MobileMoneyPaymentModal";
 import { useReactToPrint } from "react-to-print";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import {
   isTerminalMobileMoneyFailure,
   toMobileMoneyFailureMessage,
 } from "../utils/mobileMoneyStatus";
 
 const PRODUCT_PAGE_SIZE = 24;
+
+const createPaymentInitializeIdempotencyKey = () => {
+  return (
+    globalThis.crypto?.randomUUID?.() ||
+    `pos-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  );
+};
+
+const getPaymentInitializeHeaders = (idempotencyKeyRef) => {
+  if (!idempotencyKeyRef.current) {
+    idempotencyKeyRef.current = createPaymentInitializeIdempotencyKey();
+  }
+
+  return {
+    headers: {
+      "Idempotency-Key": idempotencyKeyRef.current,
+    },
+  };
+};
 
 const isEditableTarget = (target) => {
   const tagName = target?.tagName;
@@ -60,11 +80,17 @@ export const POSPage = () => {
     useState(false);
   const [mobileMoneySubmitting, setMobileMoneySubmitting] = useState(false);
   const [mobileMoneyStatusMessage, setMobileMoneyStatusMessage] = useState("");
+  const [mobileMoneyExpiresAt, setMobileMoneyExpiresAt] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [isClearCartDialogOpen, setIsClearCartDialogOpen] = useState(false);
+  const [isRemoveItemDialogOpen, setIsRemoveItemDialogOpen] = useState(false);
+  const [pendingRemoveItem, setPendingRemoveItem] = useState(null);
   const barcodeInputRef = useRef(null);
   const receiptRef = useRef(null);
   const productItemRefs = useRef([]);
   const cartItemRefs = useRef([]);
+  const mobileMoneyPollingActiveRef = useRef(false);
+  const paymentInitializeIdempotencyKeyRef = useRef("");
   const shortcutStateRef = useRef({
     isPaymentModalOpen: false,
     isMobileMoneyModalOpen: false,
@@ -237,6 +263,24 @@ export const POSPage = () => {
     barcodeInputRef.current?.focus();
   };
 
+  const requestClearCart = () => {
+    if (items.length === 0) return;
+    setIsClearCartDialogOpen(true);
+  };
+
+  const requestRemoveItem = (item) => {
+    if (!item?.productId) return;
+    setPendingRemoveItem(item);
+    setIsRemoveItemDialogOpen(true);
+  };
+
+  const handleConfirmRemoveItem = () => {
+    if (pendingRemoveItem?.productId) {
+      removeItem(pendingRemoveItem.productId);
+    }
+    setPendingRemoveItem(null);
+  };
+
   const addProductToCart = (product) => {
     if (!product) return false;
 
@@ -347,7 +391,7 @@ export const POSPage = () => {
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       setSelectedCartIndex(index);
-      removeItem(item.productId);
+      requestRemoveItem(item);
       return;
     }
 
@@ -388,10 +432,12 @@ export const POSPage = () => {
     setAmountPaid(total);
 
     if (method !== "MOBILE_MONEY") {
+      mobileMoneyPollingActiveRef.current = false;
       setIsMobileMoneyModalOpen(false);
       setMobileMoneyPhoneNumber("");
       setMobileMoneyOtp("");
       setMobileMoneyReference("");
+      setMobileMoneyExpiresAt(null);
       setMobileMoneyRequiresOtp(false);
       setMobileMoneyAwaitingApproval(false);
       setMobileMoneySubmitting(false);
@@ -410,6 +456,8 @@ export const POSPage = () => {
   const handleCharge = () => {
     if (items.length === 0 || chargeDisabled) return;
     setChargeDisabled(true);
+    paymentInitializeIdempotencyKeyRef.current =
+      createPaymentInitializeIdempotencyKey();
     setIsPaymentModalOpen(true);
     setAmountPaid(grandTotal(discount).toFixed(2));
     setTimeout(() => setChargeDisabled(false), 1500);
@@ -422,10 +470,12 @@ export const POSPage = () => {
   }, []);
 
   const handlePrint = useReactToPrint({
-    content: () => receiptRef.current,
+    contentRef: receiptRef,
   });
 
   const handleNewSale = () => {
+    mobileMoneyPollingActiveRef.current = false;
+    paymentInitializeIdempotencyKeyRef.current = "";
     clearCart();
     setIsReceiptModalOpen(false);
     setCompletedSale(null);
@@ -438,6 +488,7 @@ export const POSPage = () => {
     setMobileMoneyPhoneNumber("");
     setMobileMoneyOtp("");
     setMobileMoneyReference("");
+    setMobileMoneyExpiresAt(null);
     setMobileMoneyRequiresOtp(false);
     setMobileMoneyAwaitingApproval(false);
     setMobileMoneySubmitting(false);
@@ -450,6 +501,8 @@ export const POSPage = () => {
   };
 
   function handleSaleCompleted(sale) {
+    mobileMoneyPollingActiveRef.current = false;
+    paymentInitializeIdempotencyKeyRef.current = "";
     setCompletedSale(sale || null);
     setIsPaymentModalOpen(false);
     setIsMobileMoneyModalOpen(false);
@@ -458,6 +511,7 @@ export const POSPage = () => {
     setMobileMoneyPhoneNumber("");
     setMobileMoneyOtp("");
     setMobileMoneyReference("");
+    setMobileMoneyExpiresAt(null);
     setMobileMoneyRequiresOtp(false);
     setMobileMoneyAwaitingApproval(false);
     setMobileMoneySubmitting(false);
@@ -477,19 +531,40 @@ export const POSPage = () => {
     toast.success("Sale completed successfully!");
   }
 
-  const pollMobileMoneyStatus = async (reference) => {
+  const pollMobileMoneyStatus = async (reference, initialExpiresAt) => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    for (let attempt = 0; attempt < 12; attempt += 1) {
+    let attempt = 0;
+    let deadline = initialExpiresAt
+      ? new Date(initialExpiresAt).getTime()
+      : Date.now() + 15 * 60 * 1000;
+
+    while (mobileMoneyPollingActiveRef.current && Date.now() <= deadline) {
       if (attempt > 0) {
-        await wait(5000);
+        await wait(attempt < 10 ? 3000 : 5000);
       }
+
+      if (!mobileMoneyPollingActiveRef.current) {
+        const cancelledError = new Error("Payment polling stopped");
+        cancelledError.isPollingStopped = true;
+        throw cancelledError;
+      }
+
+      attempt += 1;
 
       try {
         const verifyResponse = await apiClient.get(
           `/payments/verify/${reference}`,
         );
         const paymentData = verifyResponse?.data?.data || {};
+
+        if (paymentData?.expiresAt) {
+          const nextDeadline = new Date(paymentData.expiresAt).getTime();
+          if (Number.isFinite(nextDeadline) && nextDeadline > 0) {
+            deadline = nextDeadline;
+          }
+        }
+
         const paymentStatus = String(paymentData?.status || "").toUpperCase();
         const saleStatus = String(paymentData?.saleStatus || "").toUpperCase();
         const providerStatus = String(
@@ -536,6 +611,10 @@ export const POSPage = () => {
         const apiErrorMessage =
           error?.response?.data?.error || error?.message || "";
 
+        if (error?.isPollingStopped) {
+          throw error;
+        }
+
         if (
           error?.isTerminal ||
           isTerminalMobileMoneyFailure(apiErrorMessage)
@@ -543,10 +622,16 @@ export const POSPage = () => {
           throw new Error(toMobileMoneyFailureMessage(apiErrorMessage));
         }
 
-        if (attempt === 11) {
+        if (Date.now() + 5000 > deadline) {
           throw error;
         }
       }
+    }
+
+    if (!mobileMoneyPollingActiveRef.current) {
+      const cancelledError = new Error("Payment polling stopped");
+      cancelledError.isPollingStopped = true;
+      throw cancelledError;
     }
 
     throw new Error(
@@ -557,29 +642,43 @@ export const POSPage = () => {
   };
 
   const handleMobileMoneyStart = async () => {
+    const normalizedPhone = String(mobileMoneyPhoneNumber || "")
+      .trim()
+      .replace(/[\s()-]/g, "");
+
+    if (!/^(?:\+233\d{9}|0\d{9})$/.test(normalizedPhone)) {
+      throw new Error(
+        "Phone must be +233XXXXXXXXX or 0XXXXXXXXX (e.g. 0540000000)",
+      );
+    }
+
     const selectedCustomer = (customers?.data || []).find(
       (customer) => customer.id === selectedCustomerId,
     );
 
-    const response = await apiClient.post("/payments/initialize", {
-      amount: grandTotal(discount),
-      paymentMethod: "MOBILE_MONEY",
-      customerId: selectedCustomerId || null,
-      customerEmail: selectedCustomer?.email || null,
-      items: items.map((item) => ({
-        productId: item.productId,
-        productName: item.name,
-        barcode: item.barcode,
-        price: item.price,
-        taxRate: item.taxRate,
-        quantity: item.quantity,
-      })),
-      phoneNumber: mobileMoneyPhoneNumber,
-      discountAmount: discount,
-      metadata: {
-        source: "POS",
+    const response = await apiClient.post(
+      "/payments/initialize",
+      {
+        amount: grandTotal(discount),
+        paymentMethod: "MOBILE_MONEY",
+        customerId: selectedCustomerId || null,
+        customerEmail: selectedCustomer?.email || null,
+        items: items.map((item) => ({
+          productId: item.productId,
+          productName: item.name,
+          barcode: item.barcode,
+          price: item.price,
+          taxRate: item.taxRate,
+          quantity: item.quantity,
+        })),
+        phoneNumber: mobileMoneyPhoneNumber,
+        discountAmount: discount,
+        metadata: {
+          source: "POS",
+        },
       },
-    });
+      getPaymentInitializeHeaders(paymentInitializeIdempotencyKeyRef),
+    );
 
     const paymentData = response?.data?.data || {};
     const reference = paymentData?.reference;
@@ -589,6 +688,7 @@ export const POSPage = () => {
     }
 
     setMobileMoneyReference(reference);
+    setMobileMoneyExpiresAt(paymentData?.expiresAt || null);
     setMobileMoneyStatusMessage(
       paymentData?.providerMessage ||
         "Payment prompt sent. Waiting for customer approval.",
@@ -609,7 +709,8 @@ export const POSPage = () => {
 
     setMobileMoneyRequiresOtp(false);
     setMobileMoneyAwaitingApproval(true);
-    await pollMobileMoneyStatus(reference);
+    mobileMoneyPollingActiveRef.current = true;
+    await pollMobileMoneyStatus(reference, paymentData?.expiresAt || null);
   };
 
   const handleMobileMoneySubmitOtp = async () => {
@@ -639,10 +740,63 @@ export const POSPage = () => {
       paymentData?.gatewayResponse || "Waiting for customer approval...",
     );
 
-    await pollMobileMoneyStatus(mobileMoneyReference);
+    mobileMoneyPollingActiveRef.current = true;
+    await pollMobileMoneyStatus(
+      mobileMoneyReference,
+      paymentData?.expiresAt || mobileMoneyExpiresAt,
+    );
+  };
+
+  const handleCancelMobileMoneyRequest = async () => {
+    if (!mobileMoneyReference) {
+      setIsMobileMoneyModalOpen(false);
+      return;
+    }
+
+    try {
+      setMobileMoneySubmitting(true);
+      mobileMoneyPollingActiveRef.current = false;
+
+      const response = await apiClient.post("/payments/cancel", {
+        reference: mobileMoneyReference,
+        reason: "Cancelled from POS terminal",
+      });
+
+      const result = response?.data?.data || {};
+      setMobileMoneyAwaitingApproval(false);
+      setMobileMoneyStatusMessage(
+        result?.failureReason || "Payment request cancelled.",
+      );
+
+      toast.success("Payment request cancelled");
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+
+      setTimeout(() => {
+        setIsMobileMoneyModalOpen(false);
+        setMobileMoneyPhoneNumber("");
+        setMobileMoneyOtp("");
+        setMobileMoneyReference("");
+        setMobileMoneyExpiresAt(null);
+        setMobileMoneyRequiresOtp(false);
+        setMobileMoneyAwaitingApproval(false);
+        setMobileMoneyStatusMessage("");
+      }, 200);
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to cancel payment request",
+      );
+    } finally {
+      setMobileMoneySubmitting(false);
+    }
   };
 
   const handleMobileMoneyConfirm = async () => {
+    if (mobileMoneyAwaitingApproval) {
+      return;
+    }
+
     try {
       setMobileMoneySubmitting(true);
 
@@ -653,6 +807,10 @@ export const POSPage = () => {
 
       await handleMobileMoneyStart();
     } catch (error) {
+      if (error?.isPollingStopped) {
+        return;
+      }
+
       const rawErrorMessage =
         error?.response?.data?.error ||
         error?.message ||
@@ -723,6 +881,8 @@ export const POSPage = () => {
     };
 
     const openMobileMoneyModal = () => {
+      paymentInitializeIdempotencyKeyRef.current =
+        createPaymentInitializeIdempotencyKey();
       const selectedCustomer = (customers?.data || []).find(
         (customer) => customer.id === selectedCustomerId,
       );
@@ -730,6 +890,7 @@ export const POSPage = () => {
       setMobileMoneyPhoneNumber(selectedCustomer?.phone || "");
       setMobileMoneyOtp("");
       setMobileMoneyReference("");
+      setMobileMoneyExpiresAt(null);
       setMobileMoneyRequiresOtp(false);
       setMobileMoneyAwaitingApproval(false);
       setMobileMoneySubmitting(false);
@@ -746,15 +907,19 @@ export const POSPage = () => {
         (c) => c.id === selectedCustomerId,
       );
 
-      const initResponse = await apiClient.post("/payments/initialize", {
-        amount: paid,
-        paymentMethod,
-        customerId: selectedCustomerId || null,
-        customerEmail: selectedCustomer?.email || null,
-        metadata: {
-          source: "POS",
+      const initResponse = await apiClient.post(
+        "/payments/initialize",
+        {
+          amount: paid,
+          paymentMethod,
+          customerId: selectedCustomerId || null,
+          customerEmail: selectedCustomer?.email || null,
+          metadata: {
+            source: "POS",
+          },
         },
-      });
+        getPaymentInitializeHeaders(paymentInitializeIdempotencyKeyRef),
+      );
 
       const authorizationUrl = initResponse?.data?.data?.authorizationUrl;
       const reference = initResponse?.data?.data?.reference;
@@ -827,22 +992,10 @@ export const POSPage = () => {
       handleMobileMoneyConfirm,
       handleNewSale,
       moveCartSelection,
-      removeItem,
+      removeItem: requestRemoveItem,
       updateQty,
     };
-  }, [
-    isPaymentModalOpen,
-    isMobileMoneyModalOpen,
-    isReceiptModalOpen,
-    selectedCartItem,
-    handleCharge,
-    handleConfirmPayment,
-    handleMobileMoneyConfirm,
-    handleNewSale,
-    moveCartSelection,
-    removeItem,
-    updateQty,
-  ]);
+  });
 
   useEffect(() => {
     const handleGlobalShortcuts = (event) => {
@@ -936,7 +1089,7 @@ export const POSPage = () => {
         state.selectedCartItem
       ) {
         event.preventDefault();
-        state.removeItem?.(state.selectedCartItem.productId);
+        state.removeItem?.(state.selectedCartItem);
       }
     };
 
@@ -1253,7 +1406,7 @@ export const POSPage = () => {
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            removeItem(item.productId);
+                            requestRemoveItem(item);
                           }}
                           className="text-red-400 transition hover:text-red-300"
                           aria-label={`Remove ${item.name}`}
@@ -1305,15 +1458,19 @@ export const POSPage = () => {
             <div className="border-t border-[#1e2d45] bg-[#0b1220] p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl border border-[#1e2d45] bg-[#141d2e] px-3 py-2">
-                  <p className="text-slate-500">Subtotal</p>
-                  <p className="font-mono text-slate-100">
-                    {formatCurrency(subtotal())}
+                  <p className="flex items-center justify-between gap-2 text-slate-500">
+                    <span>Subtotal</span>
+                    <span className="font-mono text-slate-100">
+                      {formatCurrency(subtotal())}
+                    </span>
                   </p>
                 </div>
                 <div className="rounded-xl border border-[#1e2d45] bg-[#141d2e] px-3 py-2">
-                  <p className="text-slate-500">VAT</p>
-                  <p className="font-mono text-slate-100">
-                    {formatCurrency(taxTotal())}
+                  <p className="flex items-center justify-between gap-2 text-slate-500">
+                    <span>VAT</span>
+                    <span className="font-mono text-slate-100">
+                      {formatCurrency(taxTotal())}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -1346,7 +1503,7 @@ export const POSPage = () => {
                   variant="ghost"
                   fullWidth
                   size="lg"
-                  onClick={clearCart}
+                  onClick={requestClearCart}
                   disabled={items.length === 0}
                   leftIcon={<Trash2 size={16} />}
                 >
@@ -1355,7 +1512,8 @@ export const POSPage = () => {
                 <Button
                   variant="primary"
                   fullWidth
-                  size="lg"
+                  size="md"
+                  className="whitespace-nowrap font-semibold"
                   onClick={handleCharge}
                   disabled={items.length === 0}
                 >
@@ -1492,6 +1650,7 @@ export const POSPage = () => {
             setMobileMoneyPhoneNumber("");
             setMobileMoneyOtp("");
             setMobileMoneyReference("");
+            setMobileMoneyExpiresAt(null);
             setMobileMoneyRequiresOtp(false);
             setMobileMoneyAwaitingApproval(false);
             setMobileMoneySubmitting(false);
@@ -1504,6 +1663,7 @@ export const POSPage = () => {
         otp={mobileMoneyOtp}
         onOtpChange={setMobileMoneyOtp}
         onConfirm={handleMobileMoneyConfirm}
+        onCancelPending={handleCancelMobileMoneyRequest}
         isSubmitting={mobileMoneySubmitting}
         isAwaitingApproval={mobileMoneyAwaitingApproval}
         statusMessage={mobileMoneyStatusMessage}
@@ -1567,6 +1727,29 @@ export const POSPage = () => {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={isClearCartDialogOpen}
+        onClose={() => setIsClearCartDialogOpen(false)}
+        onConfirm={clearCart}
+        message="Are you sure you want to clear the cart? All current line items will be removed."
+        confirmLabel="Clear Cart"
+        confirmVariant="danger"
+        title="Clear Cart"
+      />
+
+      <ConfirmDialog
+        isOpen={isRemoveItemDialogOpen}
+        onClose={() => {
+          setIsRemoveItemDialogOpen(false);
+          setPendingRemoveItem(null);
+        }}
+        onConfirm={handleConfirmRemoveItem}
+        message={`Remove ${pendingRemoveItem?.name || "this item"} from the cart?`}
+        confirmLabel="Remove Item"
+        confirmVariant="danger"
+        title="Remove Cart Item"
+      />
     </div>
   );
 };

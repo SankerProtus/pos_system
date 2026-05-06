@@ -12,11 +12,12 @@ import { logger } from "../../utils/logger.js";
 export const emailService = {
     sendWelcomeEmail: async (user) => {
         try {
+            const html = welcomeEmailTemplate(user.name);
             await transporter.sendMail({
                 from: process.env.EMAIL_USER,
                 to: user.email,
                 subject: "Welcome to POS System!",
-                html: welcomeEmailTemplate(user.name),
+                html,
             });
         } catch (err) {
             logger.error("Error occurred while sending welcome email:", err.message || err);

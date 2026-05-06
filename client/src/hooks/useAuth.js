@@ -190,5 +190,6 @@ export const useAuth = () => {
     forgotPassword,
     resetPassword,
     refreshUser: auth.refreshUser,
+    updateAuthenticatedUser: auth.updateAuthenticatedUser,
   };
 };

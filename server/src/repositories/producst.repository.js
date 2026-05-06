@@ -4,6 +4,7 @@ export const productsRepository = {
   getProductByBarcode: async (barcode) => {
     return await prisma.product.findFirst({
       where: {
+        isActive: true,
         barcode: {
           equals: barcode,
           mode: "insensitive",
@@ -37,6 +38,7 @@ export const productsRepository = {
   },
   getAllProducts: async ({ categoryId, search, page, limit } = {}) => {
     const where = {
+      isActive: true,
       ...(categoryId ? { categoryId } : {}),
       ...(search
         ? {
@@ -118,6 +120,7 @@ export const productsRepository = {
   searchProducts: async (search) => {
     return await prisma.product.findMany({
       where: {
+        isActive: true,
         OR: [
           { productName: { contains: search, mode: "insensitive" } },
           { sku: { contains: search, mode: "insensitive" } },
@@ -155,6 +158,44 @@ export const productsRepository = {
     return await prisma.product.update({ where: { id }, data });
   },
   deleteProduct: async (id) => {
-    return await prisma.product.delete({ where: { id } });
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            saleItems: true,
+          },
+        },
+      },
+    });
+
+    if (!existingProduct) {
+      return null;
+    }
+
+    if (existingProduct._count.saleItems > 0) {
+      const archivedProduct = await prisma.product.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      return {
+        action: "archived",
+        product: archivedProduct,
+      };
+    }
+
+    const deletedProduct = await prisma.$transaction(async (tx) => {
+      await tx.stockAdjustment.deleteMany({ where: { productId: id } });
+      await tx.supplierProduct.deleteMany({ where: { productId: id } });
+
+      return await tx.product.delete({ where: { id } });
+    });
+
+    return {
+      action: "deleted",
+      product: deletedProduct,
+    };
   },
 };

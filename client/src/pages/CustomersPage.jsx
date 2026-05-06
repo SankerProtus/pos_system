@@ -370,12 +370,13 @@ export const CustomersPage = () => {
               {...register("phone", {
                 required: "Phone is required",
                 pattern: {
-                  value: /^\+?233[0-9]{9}$/,
-                  message: "Phone must be in format +233XXXXXXXXX",
+                  value: /^(?:\+233\d{9}|0\d{9})$/,
+                  message:
+                    "Phone must be +233XXXXXXXXX or 0XXXXXXXXX (e.g. 0540000000)",
                 },
               })}
               label="Phone"
-              placeholder="+233XXXXXXXXX"
+              placeholder="e.g. 0540000000 or +233540000000"
               error={errors.phone?.message}
             />
             <FormInput

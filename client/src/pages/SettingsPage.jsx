@@ -6,6 +6,7 @@ import { Button } from "../components/common/Button";
 import { FormInput } from "../components/common/FormInput";
 import { Select } from "../components/common/Select";
 import { Badge } from "../components/common/Badge";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { apiClient } from "../api/axios";
 import { formatDate } from "../utils/formatDate";
 import { Store, DollarSign, Receipt, Star, Database } from "lucide-react";
@@ -14,6 +15,8 @@ import { cn } from "../utils/cn";
 
 export const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState("store");
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   const queryClient = useQueryClient();
   const {
@@ -129,12 +132,20 @@ export const SettingsPage = () => {
   }, [settings, resetStore, resetTax, resetReceipt, resetLoyalty]);
 
   const onSubmitStore = (data) => {
-    updateSettingsMutation.mutate({
-      storeName: data.storeName,
-      storeAddress: data.storeAddress,
-      storeTaxId: data.vatTIN,
-      currency: data.currencySymbol,
+    setPendingAction({
+      type: "UPDATE_SETTINGS",
+      payload: {
+        storeName: data.storeName,
+        storeAddress: data.storeAddress,
+        storeTaxId: data.vatTIN,
+        currency: data.currencySymbol,
+      },
+      title: "Confirm Store Settings Update",
+      message:
+        "Apply these store information changes? This updates system-wide receipt and profile details.",
+      confirmLabel: "Save Changes",
     });
+    setIsConfirmDialogOpen(true);
   };
 
   const onSubmitTax = (data) => {
@@ -145,20 +156,36 @@ export const SettingsPage = () => {
       return;
     }
 
-    updateSettingsMutation.mutate({
-      taxRate: globalVatRate / 100,
+    setPendingAction({
+      type: "UPDATE_SETTINGS",
+      payload: {
+        taxRate: globalVatRate / 100,
+      },
+      title: "Confirm Tax Settings Update",
+      message:
+        "Apply this VAT change? New tax settings affect checkout totals for future transactions.",
+      confirmLabel: "Apply Tax Settings",
     });
+    setIsConfirmDialogOpen(true);
   };
 
   const onSubmitReceipt = (data) => {
-    updateSettingsMutation.mutate({
-      receiptHeaderText: data.receiptHeaderText,
-      receiptFooter: data.receiptFooterText,
-      receiptPaperWidth: data.receiptPaperWidth,
-      autoPrint: Boolean(data.autoPrint),
-      showLoyaltyPoints: Boolean(data.showLoyaltyPoints),
-      showStoreLogo: Boolean(data.showStoreLogo),
+    setPendingAction({
+      type: "UPDATE_SETTINGS",
+      payload: {
+        receiptHeaderText: data.receiptHeaderText,
+        receiptFooter: data.receiptFooterText,
+        receiptPaperWidth: data.receiptPaperWidth,
+        autoPrint: Boolean(data.autoPrint),
+        showLoyaltyPoints: Boolean(data.showLoyaltyPoints),
+        showStoreLogo: Boolean(data.showStoreLogo),
+      },
+      title: "Confirm Receipt Settings Update",
+      message:
+        "Apply these receipt settings? They will be used for all newly printed receipts.",
+      confirmLabel: "Apply Receipt Settings",
     });
+    setIsConfirmDialogOpen(true);
   };
 
   const onSubmitLoyalty = (data) => {
@@ -181,11 +208,31 @@ export const SettingsPage = () => {
       return;
     }
 
-    updateSettingsMutation.mutate({
-      pointsPerGHC,
-      ghcPerPoint,
-      minimumPointsToRedeem,
+    setPendingAction({
+      type: "UPDATE_SETTINGS",
+      payload: {
+        pointsPerGHC,
+        ghcPerPoint,
+        minimumPointsToRedeem,
+      },
+      title: "Confirm Loyalty Settings Update",
+      message:
+        "Apply loyalty program changes? These values affect future points accrual and redemption.",
+      confirmLabel: "Apply Loyalty Settings",
     });
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleConfirmAction = () => {
+    if (pendingAction?.type === "UPDATE_SETTINGS" && pendingAction.payload) {
+      updateSettingsMutation.mutate(pendingAction.payload);
+    }
+
+    if (pendingAction?.type === "BACKUP_NOW") {
+      backupMutation.mutate();
+    }
+
+    setPendingAction(null);
   };
 
   return (
@@ -492,7 +539,16 @@ export const SettingsPage = () => {
                   <Button
                     variant="primary"
                     fullWidth
-                    onClick={() => backupMutation.mutate()}
+                    onClick={() => {
+                      setPendingAction({
+                        type: "BACKUP_NOW",
+                        title: "Confirm Backup",
+                        message:
+                          "Create a manual backup now? This may take a moment while data is prepared.",
+                        confirmLabel: "Start Backup",
+                      });
+                      setIsConfirmDialogOpen(true);
+                    }}
                     loading={backupMutation.isLoading}
                   >
                     Backup Now
@@ -509,6 +565,22 @@ export const SettingsPage = () => {
           )}
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        onClose={() => {
+          setIsConfirmDialogOpen(false);
+          setPendingAction(null);
+        }}
+        onConfirm={handleConfirmAction}
+        message={
+          pendingAction?.message ||
+          "Are you sure you want to continue with this action?"
+        }
+        confirmLabel={pendingAction?.confirmLabel || "Confirm"}
+        confirmVariant="danger"
+        title={pendingAction?.title || "Confirm Action"}
+      />
     </div>
   );
 };

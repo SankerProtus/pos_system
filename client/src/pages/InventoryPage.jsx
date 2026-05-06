@@ -10,6 +10,7 @@ import { Modal } from "../components/common/Modal";
 import { Select } from "../components/common/Select";
 import { FormInput } from "../components/common/FormInput";
 import { Badge } from "../components/common/Badge";
+import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { apiClient } from "../api/axios";
 import { formatDate } from "../utils/formatDate";
 import { Package, Download } from "lucide-react";
@@ -23,6 +24,8 @@ export const InventoryPage = () => {
   const [receiveProductId, setReceiveProductId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isAdjustmentConfirmOpen, setIsAdjustmentConfirmOpen] = useState(false);
+  const [pendingAdjustment, setPendingAdjustment] = useState(null);
   const pageSize = 10;
 
   const queryClient = useQueryClient();
@@ -82,19 +85,30 @@ export const InventoryPage = () => {
   };
 
   const onSubmit = (data) => {
+    if (!selectedProduct?.productId) {
+      toast.error("Select a product before adjusting stock");
+      return;
+    }
+
     const quantity = parseInt(data.quantityChange, 10);
     if (!Number.isFinite(quantity)) {
       toast.error("Enter a valid quantity change");
       return;
     }
 
-    adjustStockMutation.mutate({
-      productId: selectedProduct.productId,
-      quantityChange: quantity,
-      reason: adjustmentReason,
-      notes: data.notes,
-      reference: data.reference,
+    setPendingAdjustment({
+      payload: {
+        productId: selectedProduct.productId,
+        quantityChange: quantity,
+        reason: adjustmentReason,
+        notes: data.notes,
+        reference: data.reference,
+      },
+      title: "Confirm Stock Adjustment",
+      message: `Apply a ${quantity > 0 ? "positive" : "negative"} adjustment of ${Math.abs(quantity)} to ${selectedProduct.product?.productName || "the selected product"}?`,
+      confirmLabel: "Apply Adjustment",
     });
+    setIsAdjustmentConfirmOpen(true);
   };
 
   const receiveProductOptions = [
@@ -107,6 +121,11 @@ export const InventoryPage = () => {
 
   const onSubmitReceive = (data) => {
     const quantity = Math.abs(parseInt(data.quantityChange, 10));
+    const selectedItem = (inventory?.data || []).find(
+      (item) => item.productId === receiveProductId,
+    );
+    const productName =
+      selectedItem?.product?.productName || "selected product";
 
     if (!receiveProductId) {
       toast.error("Please select a product");
@@ -118,13 +137,26 @@ export const InventoryPage = () => {
       return;
     }
 
-    adjustStockMutation.mutate({
-      productId: receiveProductId,
-      quantityChange: quantity,
-      reason: "PURCHASE",
-      notes: data.notes,
-      reference: data.reference,
+    setPendingAdjustment({
+      payload: {
+        productId: receiveProductId,
+        quantityChange: quantity,
+        reason: "PURCHASE",
+        notes: data.notes,
+        reference: data.reference,
+      },
+      title: "Confirm Stock Receipt",
+      message: `Receive ${quantity} unit${quantity === 1 ? "" : "s"} into inventory for ${productName}?`,
+      confirmLabel: "Receive Stock",
     });
+    setIsAdjustmentConfirmOpen(true);
+  };
+
+  const handleConfirmPendingAdjustment = () => {
+    if (pendingAdjustment?.payload) {
+      adjustStockMutation.mutate(pendingAdjustment.payload);
+    }
+    setPendingAdjustment(null);
   };
 
   const csvEscape = (value) => {
@@ -612,6 +644,22 @@ export const InventoryPage = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={isAdjustmentConfirmOpen}
+        onClose={() => {
+          setIsAdjustmentConfirmOpen(false);
+          setPendingAdjustment(null);
+        }}
+        onConfirm={handleConfirmPendingAdjustment}
+        message={
+          pendingAdjustment?.message ||
+          "Are you sure you want to apply this inventory change?"
+        }
+        confirmLabel={pendingAdjustment?.confirmLabel || "Confirm"}
+        confirmVariant="danger"
+        title={pendingAdjustment?.title || "Confirm Inventory Update"}
+      />
     </div>
   );
 };

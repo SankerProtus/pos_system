@@ -3,7 +3,7 @@ import { body, validationResult } from "express-validator";
 /**
  * Middleware to handle validation errors
  */
-export const handleValidationErrors = (req, res, next) => {
+const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -148,31 +148,5 @@ export const validateLogout = [
     .notEmpty()
     .withMessage("Refresh token is required")
     .trim(),
-  handleValidationErrors,
-];
-
-/**
- * Validate change password
- */
-export const validateChangePassword = [
-  body("currentPassword")
-    .notEmpty()
-    .withMessage("Current password is required")
-    .trim(),
-  body("newPassword")
-    .isLength({ min: 6 })
-    .withMessage("New password must be at least 6 characters")
-    .matches(/\d/)
-    .withMessage("New password must contain at least one number")
-    .matches(/[a-zA-Z]/)
-    .withMessage("New password must contain at least one letter")
-    .trim(),
-  body("newPassword")
-    .custom((value, { req }) => {
-      if (value === req.body.currentPassword) {
-        throw new Error("New password must be different from current password");
-      }
-      return true;
-    }),
   handleValidationErrors,
 ];

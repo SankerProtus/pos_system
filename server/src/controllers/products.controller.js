@@ -104,14 +104,34 @@ export const productsController = {
   deleteProduct: async (req, res) => {
     try {
       const { id } = req.params;
-      const deletedProduct = await productsService.deleteProduct(id);
-      if (!deletedProduct) {
+      const deleteResult = await productsService.deleteProduct(id);
+      if (!deleteResult) {
         return res.status(404).json({ message: "Product not found" });
       }
-      res.status(200).json({ message: "Product deleted successfully" });
+
+      if (deleteResult.action === "archived") {
+        return res.status(200).json({
+          message:
+            "Product has sale history and was archived successfully.",
+          data: { action: "archived", id: deleteResult.product.id },
+        });
+      }
+
+      res.status(200).json({
+        message: "Product deleted successfully",
+        data: { action: "deleted", id: deleteResult.product.id },
+      });
     } catch (error) {
       console.error("Error deleting product:", error);
       logger.error(`Error deleting product: ${error.message}`);
+
+      if (error.code === "P2003") {
+        return res.status(409).json({
+          message:
+            "Cannot delete product because it is referenced by other records.",
+        });
+      }
+
       res.status(500).json({ message: "Failed to delete product" });
     }
   },

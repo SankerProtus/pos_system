@@ -63,6 +63,7 @@ export const authService = {
         id: user.id,
         name: user.name,
         email: user.email,
+        profileImageUrl: user.profileImageUrl,
         role: user.role,
       },
       tokens: {
@@ -114,6 +115,7 @@ export const authService = {
         id: user.id,
         name: user.name,
         email: user.email,
+        profileImageUrl: user.profileImageUrl,
         role: user.role,
       },
       tokens: {
@@ -376,6 +378,7 @@ export const authService = {
       id: true,
       name: true,
       email: true,
+      profileImageUrl: true,
       role: true,
       isActive: true,
       isVerified: true,

@@ -39,6 +39,12 @@ enum PaymentStatus {
   FAILED
 }
 
+enum IdempotencyState {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
 // Reason codes for manual inventory movements.
 enum StockAdjustmentReason {
   PURCHASE       // New stock received from supplier
@@ -72,6 +78,7 @@ model User {
   id           String   @id @default(cuid())
   name         String   @db.VarChar(100)
   email        String   @unique @db.VarChar(150)
+  profileImageUrl String? @db.Text
   passwordHash String   @db.Text
   role         Role     @default(CASHIER)
   pin          String?  @db.VarChar(6)
@@ -456,6 +463,7 @@ model Payment {
 
   sale Sale @relation(fields: [saleId], references: [id])
   webhookEvents PaymentWebhookEvent[]
+  idempotencyRecords PaymentIdempotency[]
 
   @@index([method])
   @@index([status])
@@ -472,6 +480,8 @@ model PaymentWebhookEvent {
   eventType      String    @db.VarChar(80)
   status         String?   @db.VarChar(40)
   signature      String?   @db.VarChar(255)
+  payloadHash    String?   @db.VarChar(64)
+  errorReason    String?   @db.Text
   receivedAt     DateTime  @default(now())
   processedAt    DateTime?
   paymentId      String?
@@ -479,8 +489,34 @@ model PaymentWebhookEvent {
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@index([reference])
+  @@index([eventType, receivedAt])
+  @@index([signature, receivedAt])
   @@index([paymentId])
   @@map("payment_webhook_events")
+}
+
+model PaymentIdempotency {
+  id             String           @id @default(cuid())
+  idempotencyKey String           @db.VarChar(120)
+  endpoint       String           @db.VarChar(80)
+  userId         String
+  paymentId      String?
+  requestHash    String           @db.VarChar(64)
+  state          IdempotencyState @default(IN_PROGRESS)
+  statusCode     Int?
+  responseBody   Json?
+  processedAt    DateTime?
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([idempotencyKey, endpoint, userId])
+  @@index([expiresAt])
+  @@index([state, createdAt])
+  @@index([userId, createdAt])
+  @@map("payment_idempotency")
 }
 
 //  ================  RECEIPTS  ================

@@ -23,7 +23,7 @@ const TIMEOUT_PATTERNS = [
   /took too long/i,
 ];
 
-export const getMobileMoneyFailureType = (message) => {
+const getMobileMoneyFailureType = (message) => {
   const text = String(message || "").trim();
   if (!text) {
     return null;

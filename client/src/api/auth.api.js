@@ -23,6 +23,17 @@ export const authApi = {
       throw error.response ? error.response.data : error;
     }
   },
+  updateProfile: async (data) => {
+    try {
+      const response = await apiClient.patch(
+        API_ENDPOINTS.USERS.UPDATE_PROFILE,
+        data,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : error;
+    }
+  },
   login: async (formData) => {
     try {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, formData);

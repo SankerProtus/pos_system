@@ -2,6 +2,9 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/Prisma.js";
 import { paystackService } from "./paystack.service.js";
+import { logger } from "../utils/logger.js";
+import { metrics } from "../utils/metrics.js";
+import { paymentStateMachine } from "./paymentStateMachine.service.js";
 
 const MOMO_PROVIDER = (process.env.MOMO_PROVIDER || "PAYSTACK").toUpperCase();
 const PAYMENT_TIMEOUT_MINUTES = Number(
@@ -9,6 +12,9 @@ const PAYMENT_TIMEOUT_MINUTES = Number(
 );
 const DEFAULT_CUSTOMER_EMAIL =
   process.env.PAYSTACK_DEFAULT_CUSTOMER_EMAIL || "pos@example.com";
+const WEBHOOK_REPLAY_WINDOW_MINUTES = Number(
+  process.env.WEBHOOK_REPLAY_WINDOW_MINUTES || 10,
+);
 
 const toMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
 const toCents = (value) => Math.round((Number(value) || 0) * 100);
@@ -19,37 +25,30 @@ const createBadRequestError = (message) => {
   return error;
 };
 
+const transitionPayment = ({ payment, toStatus, source, reference }) => {
+  paymentStateMachine.assertTransition({
+    fromStatus: payment.status,
+    toStatus,
+    reference,
+    source,
+  });
+};
+
 const normalizePhoneNumber = (phoneNumber) => {
   const raw = String(phoneNumber || "").trim();
   const normalized = raw.replace(/[\s()-]/g, "");
 
-  if (!/^\+?[0-9]{10,15}$/.test(normalized)) {
-    throw createBadRequestError(
-      "Provide a valid Ghana phone number (e.g. 024..., +23324..., or 23324...)",
-    );
-  }
-
   if (/^\+233\d{9}$/.test(normalized)) {
     return normalized;
-  }
-
-  if (/^233\d{9}$/.test(normalized)) {
-    return `+${normalized}`;
-  }
-
-  if (/^00233\d{9}$/.test(normalized)) {
-    return `+${normalized.slice(2)}`;
   }
 
   if (/^0\d{9}$/.test(normalized)) {
     return `+233${normalized.slice(1)}`;
   }
 
-  if (/^\d{9}$/.test(normalized)) {
-    return `+233${normalized}`;
-  }
-
-  return normalized.startsWith("+") ? normalized : `+${normalized}`;
+  throw createBadRequestError(
+    "Phone must be +233XXXXXXXXX or 0XXXXXXXXX (e.g. 0540000000)",
+  );
 };
 
 const resolveMomoProvider = (network, phoneNumber) => {
@@ -230,6 +229,13 @@ const markTimedOutIfNeeded = async (reference) => {
       return;
     }
 
+    transitionPayment({
+      payment,
+      toStatus: "FAILED",
+      source: "timeout",
+      reference,
+    });
+
     await tx.payment.update({
       where: { id: payment.id },
       data: {
@@ -315,6 +321,13 @@ const reconcilePendingPaymentWithProvider = async (reference) => {
         providerAmountCents > 0 &&
         providerAmountCents !== expectedAmountCents
       ) {
+        transitionPayment({
+          payment: latestPayment,
+          toStatus: "FAILED",
+          source: "provider_reconcile_amount_mismatch",
+          reference,
+        });
+
         await tx.payment.update({
           where: { id: latestPayment.id },
           data: {
@@ -331,6 +344,13 @@ const reconcilePendingPaymentWithProvider = async (reference) => {
         });
         return;
       }
+
+      transitionPayment({
+        payment: latestPayment,
+        toStatus: "SUCCESS",
+        source: "provider_reconcile_success",
+        reference,
+      });
 
       await tx.payment.update({
         where: { id: latestPayment.id },
@@ -370,6 +390,13 @@ const reconcilePendingPaymentWithProvider = async (reference) => {
       if (!latestPayment || latestPayment.status !== "PENDING") {
         return;
       }
+
+      transitionPayment({
+        payment: latestPayment,
+        toStatus: "FAILED",
+        source: "provider_reconcile_failed",
+        reference,
+      });
 
       await tx.payment.update({
         where: { id: latestPayment.id },
@@ -515,6 +542,13 @@ const buildProviderEventId = (payload, rawBody) => {
     .digest("hex");
 
   return `${eventType}:${contentHash}`;
+};
+
+const buildPayloadHash = (rawBody) => {
+  return crypto
+    .createHash("sha256")
+    .update(String(rawBody || ""))
+    .digest("hex");
 };
 
 const normalizeWebhookOutcome = (payload, verifiedData) => {
@@ -792,7 +826,168 @@ export const mobileMoneyService = {
     };
   },
 
-  handleWebhook: async ({ rawBody, signature }) => {
+  reconcilePaymentByReference: async (
+    reference,
+    { source = "service" } = {},
+  ) => {
+    if (!reference || !String(reference).trim()) {
+      return;
+    }
+
+    const normalizedReference = String(reference).trim();
+    await markTimedOutIfNeeded(normalizedReference);
+    await reconcilePendingPaymentWithProvider(normalizedReference);
+    metrics.increment("payments.reconcile.reference", 1, {
+      source,
+    });
+  },
+
+  cancelPendingPayment: async ({
+    reference,
+    requestedByUserId,
+    requestedByRole,
+    reason,
+  }) => {
+    if (!reference || !String(reference).trim()) {
+      const error = new Error("Payment reference is required");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (!requestedByUserId) {
+      const error = new Error("Unauthorized: user context is missing");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const normalizedReference = String(reference).trim();
+    await markTimedOutIfNeeded(normalizedReference);
+    await reconcilePendingPaymentWithProvider(normalizedReference);
+
+    const payment = await prisma.payment.findUnique({
+      where: { reference: normalizedReference },
+      include: {
+        sale: {
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      const error = new Error("Payment not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (payment.method !== "MOBILE_MONEY") {
+      const error = new Error("Only mobile money payments can be cancelled");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const elevatedRoles = new Set(["ADMIN", "MANAGER"]);
+    const canCancel =
+      elevatedRoles.has(String(requestedByRole || "").toUpperCase()) ||
+      payment.sale?.userId === requestedByUserId;
+
+    if (!canCancel) {
+      const error = new Error(
+        "You are not allowed to cancel this payment request",
+      );
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (payment.status !== "PENDING") {
+      return {
+        reference: payment.reference,
+        status: payment.status,
+        saleStatus: payment.sale?.status || "PENDING",
+        providerStatus: payment.providerStatus || null,
+        failureReason: payment.failureReason || null,
+      };
+    }
+
+    const finalReason = String(reason || "Payment cancelled from POS terminal")
+      .trim()
+      .slice(0, 500);
+
+    const now = new Date();
+    const updated = await prisma.$transaction(async (tx) => {
+      const latest = await tx.payment.findUnique({
+        where: { reference: normalizedReference },
+        include: {
+          sale: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      if (!latest) {
+        const error = new Error("Payment not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (latest.status !== "PENDING") {
+        return latest;
+      }
+
+      transitionPayment({
+        payment: latest,
+        toStatus: "FAILED",
+        source: "cancel",
+        reference: normalizedReference,
+      });
+
+      await tx.payment.update({
+        where: { id: latest.id },
+        data: {
+          status: "FAILED",
+          providerStatus: "CANCELLED_BY_POS",
+          failureReason: finalReason,
+          processedAt: now,
+        },
+      });
+
+      if (latest.sale?.status === "PENDING") {
+        await tx.sale.update({
+          where: { id: latest.sale.id },
+          data: { status: "CANCELLED" },
+        });
+      }
+
+      return tx.payment.findUnique({
+        where: { id: latest.id },
+        include: {
+          sale: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      });
+    });
+
+    return {
+      reference: updated.reference,
+      status: updated.status,
+      saleStatus: updated.sale?.status || "PENDING",
+      providerStatus: updated.providerStatus || null,
+      failureReason: updated.failureReason || finalReason,
+      cancelledAt: now,
+    };
+  },
+
+  handleWebhook: async ({ rawBody, signature, correlationId = null }) => {
     const signatureValid = validatePaystackSignature(rawBody, signature);
     if (!signatureValid) {
       const error = new Error("Invalid webhook signature");
@@ -820,6 +1015,39 @@ export const mobileMoneyService = {
 
     const eventType = String(payload?.event || "unknown");
     const providerEventId = buildProviderEventId(payload, rawBody);
+    const payloadHash = buildPayloadHash(rawBody);
+
+    const replayWindowStart = new Date(
+      Date.now() - WEBHOOK_REPLAY_WINDOW_MINUTES * 60 * 1000,
+    );
+    const replayHit = await prisma.paymentWebhookEvent.findFirst({
+      where: {
+        reference,
+        eventType,
+        payloadHash,
+        receivedAt: {
+          gte: replayWindowStart,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (replayHit) {
+      metrics.increment("payments.webhook.replay_ignored", 1);
+      logger.warn(
+        JSON.stringify({
+          event: "payment.webhook.replay_ignored",
+          correlationId,
+          reference,
+          eventType,
+        }),
+      );
+      return {
+        accepted: true,
+        duplicate: true,
+        message: "Replay webhook ignored",
+      };
+    }
 
     try {
       await prisma.paymentWebhookEvent.create({
@@ -829,6 +1057,7 @@ export const mobileMoneyService = {
           eventType,
           status: String(payload?.data?.status || "").toUpperCase() || null,
           signature,
+          payloadHash,
         },
       });
     } catch (error) {
@@ -854,87 +1083,29 @@ export const mobileMoneyService = {
 
     const outcome = normalizeWebhookOutcome(payload, verifiedData);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.findUnique({
-        where: { reference },
-        include: {
-          sale: {
-            include: {
-              user: true,
-              customer: true,
-              saleItems: true,
-              payment: true,
-              receipt: true,
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const payment = await tx.payment.findUnique({
+          where: { reference },
+          include: {
+            sale: {
+              include: {
+                user: true,
+                customer: true,
+                saleItems: true,
+                payment: true,
+                receipt: true,
+              },
             },
-          },
-        },
-      });
-
-      if (!payment) {
-        await tx.paymentWebhookEvent.update({
-          where: { providerEventId },
-          data: {
-            status: "IGNORED_PAYMENT_NOT_FOUND",
-            processedAt: new Date(),
           },
         });
 
-        return {
-          accepted: true,
-          duplicate: false,
-          status: "IGNORED_PAYMENT_NOT_FOUND",
-        };
-      }
-
-      if (payment.status === "SUCCESS" || payment.status === "FAILED") {
-        await tx.paymentWebhookEvent.update({
-          where: { providerEventId },
-          data: {
-            paymentId: payment.id,
-            status: `IGNORED_ALREADY_${payment.status}`,
-            processedAt: new Date(),
-          },
-        });
-
-        return {
-          accepted: true,
-          duplicate: false,
-          status: payment.status,
-        };
-      }
-
-      if (outcome === "SUCCESS") {
-        const expectedAmountCents = toCents(payment.amount);
-        const verifiedAmountCents = Number(verifiedData?.amount || 0);
-        const payloadAmountCents = Number(payload?.data?.amount || 0);
-        const providerAmountCents =
-          verifiedAmountCents > 0 ? verifiedAmountCents : payloadAmountCents;
-
-        if (
-          Number.isFinite(providerAmountCents) &&
-          expectedAmountCents !== providerAmountCents
-        ) {
-          await tx.payment.update({
-            where: { id: payment.id },
-            data: {
-              status: "FAILED",
-              providerStatus: "AMOUNT_MISMATCH",
-              failureReason:
-                "Provider amount does not match expected sale total",
-              processedAt: new Date(),
-            },
-          });
-
-          await tx.sale.update({
-            where: { id: payment.saleId },
-            data: { status: "CANCELLED" },
-          });
-
+        if (!payment) {
           await tx.paymentWebhookEvent.update({
             where: { providerEventId },
             data: {
-              paymentId: payment.id,
-              status: "FAILED_AMOUNT_MISMATCH",
+              status: "IGNORED_PAYMENT_NOT_FOUND",
               processedAt: new Date(),
             },
           });
@@ -942,34 +1113,151 @@ export const mobileMoneyService = {
           return {
             accepted: true,
             duplicate: false,
-            status: "FAILED",
+            status: "IGNORED_PAYMENT_NOT_FOUND",
           };
         }
+
+        if (payment.status === "SUCCESS" || payment.status === "FAILED") {
+          await tx.paymentWebhookEvent.update({
+            where: { providerEventId },
+            data: {
+              paymentId: payment.id,
+              status: `IGNORED_ALREADY_${payment.status}`,
+              processedAt: new Date(),
+            },
+          });
+
+          return {
+            accepted: true,
+            duplicate: false,
+            status: payment.status,
+          };
+        }
+
+        if (outcome === "SUCCESS") {
+          transitionPayment({
+            payment,
+            toStatus: "SUCCESS",
+            source: "webhook",
+            reference,
+          });
+
+          const expectedAmountCents = toCents(payment.amount);
+          const verifiedAmountCents = Number(verifiedData?.amount || 0);
+          const payloadAmountCents = Number(payload?.data?.amount || 0);
+          const providerAmountCents =
+            verifiedAmountCents > 0 ? verifiedAmountCents : payloadAmountCents;
+
+          if (
+            Number.isFinite(providerAmountCents) &&
+            expectedAmountCents !== providerAmountCents
+          ) {
+            transitionPayment({
+              payment,
+              toStatus: "FAILED",
+              source: "webhook_amount_mismatch",
+              reference,
+            });
+
+            await tx.payment.update({
+              where: { id: payment.id },
+              data: {
+                status: "FAILED",
+                providerStatus: "AMOUNT_MISMATCH",
+                failureReason:
+                  "Provider amount does not match expected sale total",
+                processedAt: new Date(),
+              },
+            });
+
+            await tx.sale.update({
+              where: { id: payment.saleId },
+              data: { status: "CANCELLED" },
+            });
+
+            await tx.paymentWebhookEvent.update({
+              where: { providerEventId },
+              data: {
+                paymentId: payment.id,
+                status: "FAILED_AMOUNT_MISMATCH",
+                processedAt: new Date(),
+              },
+            });
+
+            return {
+              accepted: true,
+              duplicate: false,
+              status: "FAILED",
+            };
+          }
+
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: "SUCCESS",
+              amountPaid: payment.amount,
+              providerStatus: String(
+                verifiedData?.gateway_response ||
+                  payload?.data?.status ||
+                  "success",
+              )
+                .slice(0, 50)
+                .toUpperCase(),
+              failureReason: null,
+              processedAt: new Date(),
+            },
+          });
+
+          await applySaleCompletion(tx, payment);
+
+          await tx.paymentWebhookEvent.update({
+            where: { providerEventId },
+            data: {
+              paymentId: payment.id,
+              status: "SUCCESS",
+              processedAt: new Date(),
+            },
+          });
+
+          return {
+            accepted: true,
+            duplicate: false,
+            status: "SUCCESS",
+          };
+        }
+
+        transitionPayment({
+          payment,
+          toStatus: "FAILED",
+          source: "webhook_failed",
+          reference,
+        });
 
         await tx.payment.update({
           where: { id: payment.id },
           data: {
-            status: "SUCCESS",
-            amountPaid: payment.amount,
-            providerStatus: String(
-              verifiedData?.gateway_response ||
-                payload?.data?.status ||
-                "success",
-            )
+            status: "FAILED",
+            providerStatus: String(payload?.data?.status || "failed")
               .slice(0, 50)
               .toUpperCase(),
-            failureReason: null,
+            failureReason:
+              payload?.data?.gateway_response ||
+              payload?.data?.message ||
+              "Customer declined or payment failed",
             processedAt: new Date(),
           },
         });
 
-        await applySaleCompletion(tx, payment);
+        await tx.sale.update({
+          where: { id: payment.saleId },
+          data: { status: "CANCELLED" },
+        });
 
         await tx.paymentWebhookEvent.update({
           where: { providerEventId },
           data: {
             paymentId: payment.id,
-            status: "SUCCESS",
+            status: "FAILED",
             processedAt: new Date(),
           },
         });
@@ -977,45 +1265,22 @@ export const mobileMoneyService = {
         return {
           accepted: true,
           duplicate: false,
-          status: "SUCCESS",
-        };
-      }
-
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
           status: "FAILED",
-          providerStatus: String(payload?.data?.status || "failed")
-            .slice(0, 50)
-            .toUpperCase(),
-          failureReason:
-            payload?.data?.gateway_response ||
-            payload?.data?.message ||
-            "Customer declined or payment failed",
-          processedAt: new Date(),
-        },
+        };
       });
-
-      await tx.sale.update({
-        where: { id: payment.saleId },
-        data: { status: "CANCELLED" },
-      });
-
-      await tx.paymentWebhookEvent.update({
+    } catch (error) {
+      await prisma.paymentWebhookEvent.update({
         where: { providerEventId },
         data: {
-          paymentId: payment.id,
-          status: "FAILED",
+          status: "FAILED_PROCESSING",
+          errorReason: String(
+            error?.message || "Webhook processing failed",
+          ).slice(0, 1000),
           processedAt: new Date(),
         },
       });
-
-      return {
-        accepted: true,
-        duplicate: false,
-        status: "FAILED",
-      };
-    });
+      throw error;
+    }
 
     return result;
   },

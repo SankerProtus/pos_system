@@ -1,210 +1,370 @@
 import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
 import bcrypt from "bcrypt";
 
+const prisma = new PrismaClient();
+
+const money = (value) => Number(value.toFixed(2));
+
+const seededRandom = (() => {
+  let seed = 987654321;
+  return () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+})();
+
+const randomInt = (min, max) =>
+  Math.floor(seededRandom() * (max - min + 1)) + min;
+
+const pick = (items) => items[randomInt(0, items.length - 1)];
+
+const pickManyUnique = (items, count) => {
+  const pool = [...items];
+  const selected = [];
+  for (let index = 0; index < count && pool.length > 0; index += 1) {
+    selected.push(pool.splice(randomInt(0, pool.length - 1), 1)[0]);
+  }
+  return selected;
+};
+
+const daysAgoAtHour = (daysAgo, hour, minute = 0) => {
+  const now = new Date();
+  const date = new Date(now);
+  date.setDate(now.getDate() - daysAgo);
+  date.setHours(hour, minute, randomInt(0, 59), 0);
+  return date;
+};
+
 async function main() {
-  // Seed categories
-  await prisma.category.createMany({
-    data: [
-      { name: "Beverages", description: "Drinks, juices, and soft drinks" },
-      { name: "Snacks", description: "Chips, nuts, and light snacks" },
-      { name: "Dairy", description: "Milk, cheese, and dairy products" },
-      { name: "Bakery", description: "Bread, cakes, and pastries" },
-      { name: "Produce", description: "Fresh fruits and vegetables" },
-    ],
-    skipDuplicates: true,
-  });
+  const categories = [
+    {
+      name: "Beverages",
+      description: "Soft drinks, water, juices, and energy drinks",
+    },
+    {
+      name: "Snacks",
+      description: "Chips, biscuits, nuts, and confectionery",
+    },
+    {
+      name: "Dairy",
+      description: "Milk, yogurt, butter, and cheese",
+    },
+    {
+      name: "Bakery",
+      description: "Bread, pastries, and baked snacks",
+    },
+    {
+      name: "Produce",
+      description: "Fresh fruits and vegetables",
+    },
+    {
+      name: "Household",
+      description: "Cleaning products and home essentials",
+    },
+    {
+      name: "Personal Care",
+      description: "Body care and personal hygiene",
+    },
+  ];
 
-  // Seed users
-  await prisma.user.createMany({
-    data: [
-      {
-        name: "Alice Admin",
-        email: "alice.admin@pos.com",
-        passwordHash: await bcrypt.hash("adminpassword", 10),
-        role: "ADMIN",
+  for (const category of categories) {
+    await prisma.category.upsert({
+      where: { name: category.name },
+      update: {
+        description: category.description,
         isActive: true,
-        isVerified: true,
       },
-      {
-        name: "Bob Manager",
-        email: "bob.manager@pos.com",
-        passwordHash: await bcrypt.hash("managerpassword", 10),
-        role: "MANAGER",
-        isActive: true,
-        isVerified: true,
-      },
-      {
-        name: "Charlie Cashier",
-        email: "charlie.cashier@pos.com",
-        passwordHash: await bcrypt.hash("cashierpassword", 10),
-        role: "CASHIER",
-        isActive: true,
-        isVerified: true,
-      },
-      {
-        name: "Diana Supervisor",
-        email: "diana.supervisor@pos.com",
-        passwordHash: await bcrypt.hash("supervisorpassword", 10),
-        role: "MANAGER",
-        isActive: true,
-        isVerified: true,
-      },
-      {
-        name: "Eddie Cashier",
-        email: "eddie.cashier@pos.com",
-        passwordHash: await bcrypt.hash("cashierpassword", 10),
-        role: "CASHIER",
-        isActive: true,
-        isVerified: true,
-      },
-    ],
-    skipDuplicates: true,
-  });
+      create: category,
+    });
+  }
 
-  // Seed products
-  const categories = await prisma.category.findMany();
-  const beveragesId = categories.find((c) => c.name === "Beverages").id;
-  const snacksId = categories.find((c) => c.name === "Snacks").id;
-  const dairyId = categories.find((c) => c.name === "Dairy").id;
-  const bakeryId = categories.find((c) => c.name === "Bakery").id;
-  const produceId = categories.find((c) => c.name === "Produce").id;
+  const categoryRows = await prisma.category.findMany();
+  const categoryIdByName = new Map(
+    categoryRows.map((row) => [row.name, row.id]),
+  );
 
-  await prisma.product.createMany({
-    data: [
-      {
-        productName: "Coca-Cola 500ml",
-        sku: "BEV001",
-        barcode: "1234567890123",
-        categoryId: beveragesId,
-        price: 1.5,
-        costPrice: 1.0,
-        taxRate: 0.15,
-        isActive: true,
-      },
-      {
-        productName: "Lays Classic Chips",
-        sku: "SNK001",
-        barcode: "2345678901234",
-        categoryId: snacksId,
-        price: 2.0,
-        costPrice: 1.2,
-        taxRate: 0.15,
-        isActive: true,
-      },
-      {
-        productName: "Milk 1L",
-        sku: "DAI001",
-        barcode: "3456789012345",
-        categoryId: dairyId,
-        price: 1.8,
-        costPrice: 1.3,
-        taxRate: 0.1,
-        isActive: true,
-      },
-      {
-        productName: "Baguette",
-        sku: "BAK001",
-        barcode: "4567890123456",
-        categoryId: bakeryId,
-        price: 1.2,
-        costPrice: 0.8,
-        taxRate: 0.1,
-        isActive: true,
-      },
-      {
-        productName: "Banana (1kg)",
-        sku: "PRD001",
-        barcode: "5678901234567",
-        categoryId: produceId,
-        price: 2.5,
-        costPrice: 1.5,
-        taxRate: 0.05,
-        isActive: true,
-      },
-      {
-        productName: "Orange Juice 1L",
-        sku: "BEV002",
-        barcode: "6789012345678",
-        categoryId: beveragesId,
-        price: 3.0,
-        costPrice: 2.0,
-        taxRate: 0.15,
-        isActive: true,
-      },
-      {
-        productName: "Chocolate Chip Cookies",
-        sku: "SNK002",
-        barcode: "7890123456789",
-        categoryId: snacksId,
-        price: 2.5,
-        costPrice: 1.5,
-        taxRate: 0.15,
-        isActive: true,
-      },
-      {
-        productName: "Cheddar Cheese 200g",
-        sku: "DAI002",
-        barcode: "8901234567890",
-        categoryId: dairyId,
-        price: 4.0,
-        costPrice: 2.5,
-        taxRate: 0.1,
-        isActive: true,
-      },
-    ],
-    skipDuplicates: true,
-  });
+  const userSeeds = [
+    {
+      name: "Amina Boateng",
+      email: "amina.admin@swiftpos.local",
+      role: "ADMIN",
+      password: "Admin@123",
+    },
+    {
+      name: "Kwesi Mensah",
+      email: "kwesi.manager@swiftpos.local",
+      role: "MANAGER",
+      password: "Manager@123",
+    },
+    {
+      name: "Linda Asare",
+      email: "linda.cashier@swiftpos.local",
+      role: "CASHIER",
+      password: "Cashier@123",
+    },
+    {
+      name: "Patrick Nkrumah",
+      email: "patrick.cashier@swiftpos.local",
+      role: "CASHIER",
+      password: "Cashier@123",
+    },
+    {
+      name: "Nana Osei",
+      email: "nana.supervisor@swiftpos.local",
+      role: "MANAGER",
+      password: "Manager@123",
+    },
+  ];
 
-  // Seed inventory
-  const products = await prisma.product.findMany();
-  for (const product of products) {
-    await prisma.inventory.upsert({
-      where: { productId: product.id },
-      update: {},
+  for (const user of userSeeds) {
+    const passwordHash = await bcrypt.hash(user.password, 10);
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        name: user.name,
+        role: user.role,
+        passwordHash,
+        isActive: true,
+        isVerified: true,
+      },
       create: {
-        productId: product.id,
-        quantity: Math.floor(Math.random() * 50) + 10,
-        lowStockLevel: 10,
-        reorderPoint: 20,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        passwordHash,
+        isActive: true,
+        isVerified: true,
       },
     });
   }
 
-  // Seed suppliers
-  await prisma.supplier.createMany({
-    data: [
-      {
-        name: "Global Beverages Ltd.",
-        contactName: "John Doe",
-        phone: "555-1234",
-        email: "contact@globalbev.com",
-        address: "123 Beverage St.",
-      },
-      {
-        name: "Snack World",
-        contactName: "Jane Smith",
-        phone: "555-5678",
-        email: "info@snackworld.com",
-        address: "456 Snack Ave.",
-      },
+  const productSeeds = [
+    ["Beverages", "Coca-Cola 500ml", "BEV001", "1111111111111", 4.5, 3.2, 15],
+    ["Beverages", "Bottled Water 1.5L", "BEV002", "1111111111112", 3.0, 1.8, 0],
+    ["Beverages", "Orange Juice 1L", "BEV003", "1111111111113", 12.0, 8.0, 15],
+    [
+      "Beverages",
+      "Energy Drink 330ml",
+      "BEV004",
+      "1111111111114",
+      10.0,
+      6.5,
+      15,
     ],
-    skipDuplicates: true,
+    ["Snacks", "Salted Peanuts 100g", "SNK001", "1111111111121", 8.5, 5.2, 15],
+    ["Snacks", "Potato Chips 50g", "SNK002", "1111111111122", 7.0, 4.0, 15],
+    ["Snacks", "Chocolate Cookies", "SNK003", "1111111111123", 9.5, 5.8, 15],
+    ["Snacks", "Granola Bar", "SNK004", "1111111111124", 6.0, 3.6, 15],
+    ["Dairy", "Fresh Milk 1L", "DAI001", "1111111111131", 11.0, 7.4, 12.5],
+    [
+      "Dairy",
+      "Yogurt Vanilla 450g",
+      "DAI002",
+      "1111111111132",
+      14.0,
+      9.8,
+      12.5,
+    ],
+    [
+      "Dairy",
+      "Cheddar Cheese 200g",
+      "DAI003",
+      "1111111111133",
+      19.0,
+      13.0,
+      12.5,
+    ],
+    ["Bakery", "Whole Wheat Bread", "BAK001", "1111111111141", 10.5, 6.0, 10],
+    ["Bakery", "Butter Croissant", "BAK002", "1111111111142", 7.0, 3.9, 10],
+    ["Bakery", "Cupcake Vanilla", "BAK003", "1111111111143", 6.5, 3.3, 10],
+    ["Produce", "Banana 1kg", "PRD001", "1111111111151", 13.0, 8.5, 0],
+    ["Produce", "Tomatoes 1kg", "PRD002", "1111111111152", 15.0, 9.6, 0],
+    ["Produce", "Onions 1kg", "PRD003", "1111111111153", 14.0, 8.8, 0],
+    [
+      "Household",
+      "Dishwashing Liquid 500ml",
+      "HOU001",
+      "1111111111161",
+      16.0,
+      10.2,
+      15,
+    ],
+    [
+      "Household",
+      "Toilet Tissue 4 Pack",
+      "HOU002",
+      "1111111111162",
+      18.0,
+      12.5,
+      15,
+    ],
+    [
+      "Personal Care",
+      "Toothpaste 140g",
+      "PER001",
+      "1111111111171",
+      9.0,
+      5.0,
+      15,
+    ],
+    [
+      "Personal Care",
+      "Bath Soap 175g",
+      "PER002",
+      "1111111111172",
+      5.5,
+      3.1,
+      15,
+    ],
+  ];
+
+  for (const [
+    categoryName,
+    productName,
+    sku,
+    barcode,
+    price,
+    costPrice,
+    taxRate,
+  ] of productSeeds) {
+    await prisma.product.upsert({
+      where: { sku },
+      update: {
+        productName,
+        barcode,
+        price,
+        costPrice,
+        taxRate,
+        isActive: true,
+        categoryId: categoryIdByName.get(categoryName),
+      },
+      create: {
+        productName,
+        sku,
+        barcode,
+        price,
+        costPrice,
+        taxRate,
+        isActive: true,
+        categoryId: categoryIdByName.get(categoryName),
+      },
+    });
+  }
+
+  const products = await prisma.product.findMany({ orderBy: { sku: "asc" } });
+  const productBySku = new Map(
+    products.map((product) => [product.sku, product]),
+  );
+
+  const inventoryBySku = [
+    ["BEV001", 140, 25, 50],
+    ["BEV002", 220, 30, 60],
+    ["BEV003", 95, 18, 40],
+    ["BEV004", 80, 16, 35],
+    ["SNK001", 110, 20, 45],
+    ["SNK002", 160, 25, 55],
+    ["SNK003", 120, 20, 45],
+    ["SNK004", 130, 24, 50],
+    ["DAI001", 90, 20, 42],
+    ["DAI002", 70, 15, 35],
+    ["DAI003", 60, 12, 30],
+    ["BAK001", 85, 18, 36],
+    ["BAK002", 65, 14, 30],
+    ["BAK003", 75, 15, 32],
+    ["PRD001", 100, 20, 45],
+    ["PRD002", 95, 18, 40],
+    ["PRD003", 90, 18, 38],
+    ["HOU001", 70, 12, 28],
+    ["HOU002", 55, 10, 22],
+    ["PER001", 85, 14, 35],
+    ["PER002", 120, 20, 50],
+  ];
+
+  for (const [sku, quantity, lowStockLevel, reorderPoint] of inventoryBySku) {
+    const product = productBySku.get(sku);
+    if (!product) {
+      continue;
+    }
+
+    await prisma.inventory.upsert({
+      where: { productId: product.id },
+      update: {
+        quantity,
+        lowStockLevel,
+        reorderPoint,
+      },
+      create: {
+        productId: product.id,
+        quantity,
+        lowStockLevel,
+        reorderPoint,
+      },
+    });
+  }
+
+  const supplierSeeds = [
+    {
+      name: "Accra Beverage Distributors",
+      contactName: "Kojo Larbi",
+      phone: "+233-20-555-0101",
+      email: "sales@accrabev.com",
+      address: "Airport Residential, Accra",
+    },
+    {
+      name: "FreshFoods Wholesale",
+      contactName: "Abena Ofori",
+      phone: "+233-20-555-0102",
+      email: "trade@freshfoodsgh.com",
+      address: "Kumasi Central Market Road",
+    },
+    {
+      name: "HomePlus Supplies",
+      contactName: "Yaw Baffoe",
+      phone: "+233-20-555-0103",
+      email: "orders@homeplussupplies.com",
+      address: "Spintex Road, Accra",
+    },
+  ];
+
+  await prisma.supplier.deleteMany();
+  await prisma.supplier.createMany({ data: supplierSeeds });
+
+  const suppliers = await prisma.supplier.findMany();
+  const supplierByName = new Map(
+    suppliers.map((supplier) => [supplier.name, supplier]),
+  );
+
+  const supplierRules = {
+    Beverages: "Accra Beverage Distributors",
+    Snacks: "FreshFoods Wholesale",
+    Dairy: "FreshFoods Wholesale",
+    Bakery: "FreshFoods Wholesale",
+    Produce: "FreshFoods Wholesale",
+    Household: "HomePlus Supplies",
+    "Personal Care": "HomePlus Supplies",
+  };
+
+  const productsWithCategory = await prisma.product.findMany({
+    include: { category: true },
   });
 
-  // Seed SupplierProduct links for all products and suppliers
-  const suppliers = await prisma.supplier.findMany();
-  for (const product of products) {
+  for (const product of productsWithCategory) {
+    const supplierName =
+      supplierRules[product.category.name] || "FreshFoods Wholesale";
+    const supplier = supplierByName.get(supplierName);
     await prisma.supplierProduct.upsert({
       where: {
         supplierId_productId: {
-          supplierId: suppliers[0].id,
+          supplierId: supplier.id,
           productId: product.id,
         },
       },
-      update: {},
+      update: {
+        unitCost: product.costPrice,
+        isPreferred: true,
+      },
       create: {
-        supplierId: suppliers[0].id,
+        supplierId: supplier.id,
         productId: product.id,
         unitCost: product.costPrice,
         isPreferred: true,
@@ -212,339 +372,516 @@ async function main() {
     });
   }
 
-  // Seed PURCHASE stock adjustments for each product
-  const inventories = await prisma.inventory.findMany();
-  const usersList = await prisma.user.findMany();
-  for (const product of products) {
-    const inventory = inventories.find((inv) => inv.productId === product.id);
-    const adjustment = Math.floor(Math.random() * 50) + 10;
-    const quantityBefore = 0;
-    const quantityAfter = quantityBefore + adjustment;
-    await prisma.stockAdjustment.create({
-      data: {
-        productId: product.id,
-        inventoryId: inventory ? inventory.id : null,
-        quantityBefore,
-        quantityChange: adjustment,
-        quantityAfter,
-        reason: "PURCHASE",
-        notes: "Initial stock purchase",
-        createdAt: new Date(
-          Date.now() - Math.floor(Math.random() * 10) * 24 * 60 * 60 * 1000,
-        ),
-        userId: usersList[0].id,
-      },
+  const customerSeeds = [
+    [
+      "Michael Addo",
+      "+233-24-100-0101",
+      "michael.addo@example.com",
+      "Adenta, Accra",
+      65,
+    ],
+    [
+      "Esther Nyame",
+      "+233-24-100-0102",
+      "esther.nyame@example.com",
+      "Teshie, Accra",
+      30,
+    ],
+    [
+      "Daniel Owusu",
+      "+233-24-100-0103",
+      "daniel.owusu@example.com",
+      "Kasoa, Central",
+      110,
+    ],
+    [
+      "Sarah Gyan",
+      "+233-24-100-0104",
+      "sarah.gyan@example.com",
+      "Madina, Accra",
+      25,
+    ],
+    [
+      "Richard Koomson",
+      "+233-24-100-0105",
+      "richard.koomson@example.com",
+      "Tamale, Northern",
+      70,
+    ],
+    [
+      "Martha Osei",
+      "+233-24-100-0106",
+      "martha.osei@example.com",
+      "Tema Community 8",
+      15,
+    ],
+    [
+      "Irene Badu",
+      "+233-24-100-0107",
+      "irene.badu@example.com",
+      "Cape Coast",
+      52,
+    ],
+    [
+      "Yvette Sarpong",
+      "+233-24-100-0108",
+      "yvette.sarpong@example.com",
+      "East Legon",
+      38,
+    ],
+    [
+      "Joseph Kyeremeh",
+      "+233-24-100-0109",
+      "joseph.kyeremeh@example.com",
+      "Suhum",
+      84,
+    ],
+    [
+      "Priscilla Arthur",
+      "+233-24-100-0110",
+      "priscilla.arthur@example.com",
+      "Takoradi",
+      12,
+    ],
+  ];
+
+  for (const [name, phone, email, address, loyaltyPoints] of customerSeeds) {
+    await prisma.customer.upsert({
+      where: { email },
+      update: { name, phone, address, loyaltyPoints, isActive: true },
+      create: { name, phone, email, address, loyaltyPoints, isActive: true },
     });
   }
 
-  // Seed customers
-  await prisma.customer.createMany({
-    data: [
-      {
-        name: "David Customer",
-        phone: "555-0001",
-        email: "david.customer@email.com",
-        address: "789 Main Rd.",
-        loyaltyPoints: 120,
-      },
-      {
-        name: "Eva Shopper",
-        phone: "555-0002",
-        email: "eva.shopper@email.com",
-        address: "321 Market St.",
-        loyaltyPoints: 80,
-      },
-      {
-        name: "Frank Shopper",
-        phone: "555-0003",
-        email: "frank.shopper@email.com",
-        address: "654 River Rd.",
-        loyaltyPoints: 45,
-      },
-      {
-        name: "Grace Buyer",
-        phone: "555-0004",
-        email: "grace.buyer@email.com",
-        address: "987 Hill St.",
-        loyaltyPoints: 200,
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  // Seed discounts
-  await prisma.discount.createMany({
-    data: [
-      {
-        code: "WELCOME10",
-        description: "10% off for new customers",
-        type: "PERCENTAGE",
-        value: 10,
-        minOrderAmount: 10,
-        maxUses: 100,
-        validFrom: new Date(),
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      },
-      {
-        code: "SNACK5",
-        description: "$5 off snacks",
-        type: "FIXED_AMOUNT",
-        value: 5,
-        minOrderAmount: 20,
-        maxUses: 50,
-        validFrom: new Date(),
-        validUntil: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  // Seed sales, sale items, payments, receipts
-  const users = await prisma.user.findMany();
-  const customers = await prisma.customer.findMany();
-  const discounts = await prisma.discount.findMany();
-
-  const salesSeedData = [
+  const now = new Date();
+  const discountSeeds = [
     {
-      userId: users[2].id,
-      customerId: customers[0].id,
-      discountId: discounts[0].id,
-      status: "COMPLETED",
-      subtotal: 10.0,
-      discountAmount: 1.0,
-      taxAmount: 0.5,
-      totalAmount: 9.5,
-      notes: "First sale",
-      saleItems: [
-        {
-          productId: products[0].id,
-          productName: products[0].productName,
-          barcode: products[0].barcode,
-          quantity: 2,
-          unitPrice: 1.5,
-          discount: 0.3,
-          taxRate: 0.15,
-          subtotal: 2.7,
-        },
-        {
-          productId: products[1].id,
-          productName: products[1].productName,
-          barcode: products[1].barcode,
-          quantity: 3,
-          unitPrice: 2.0,
-          discount: 0.6,
-          taxRate: 0.15,
-          subtotal: 5.4,
-        },
-      ],
-      payment: {
-        method: "CASH",
-        amountPaid: 10.0,
-        changeDue: 0.5,
-      },
-      receipt: {
-        receiptNumber: "RCP-20260319-0001",
-        storeName: "SwiftPOS Retail",
-        storeAddress: "123 Main Street",
-        storeTaxId: "TAX-123456",
-        cashierName: users[2].name,
-        customerName: customers[0].name,
-        printedAt: new Date(),
-      },
+      code: "WELCOME10",
+      description: "10% off first qualifying purchase",
+      type: "PERCENTAGE",
+      value: 10,
+      minOrderAmount: 60,
+      maxUses: 500,
+      usedCount: 0,
+      validFrom: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 45,
+      ),
+      validUntil: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 120,
+      ),
+      isActive: true,
     },
     {
-      userId: users[2].id,
-      customerId: customers[1].id,
-      discountId: discounts[1].id,
-      status: "COMPLETED",
-      subtotal: 20.0,
-      discountAmount: 5.0,
-      taxAmount: 1.0,
-      totalAmount: 16.0,
-      notes: "Second sale",
-      saleItems: [
-        {
-          productId: products[2].id,
-          productName: products[2].productName,
-          barcode: products[2].barcode,
-          quantity: 1,
-          unitPrice: 1.8,
-          discount: 0.2,
-          taxRate: 0.1,
-          subtotal: 1.6,
-        },
-        {
-          productId: products[3].id,
-          productName: products[3].productName,
-          barcode: products[3].barcode,
-          quantity: 2,
-          unitPrice: 1.2,
-          discount: 0.1,
-          taxRate: 0.1,
-          subtotal: 2.2,
-        },
-      ],
-      payment: {
-        method: "MOBILE_MONEY",
-        amountPaid: 20.0,
-        changeDue: 4.0,
-      },
-      receipt: {
-        receiptNumber: "RCP-20260319-0002",
-        storeName: "SwiftPOS Retail",
-        storeAddress: "123 Main Street",
-        storeTaxId: "TAX-123456",
-        cashierName: users[2].name,
-        customerName: customers[1].name,
-        printedAt: new Date(),
-      },
+      code: "BASKET20",
+      description: "GHS 20 off orders above GHS 200",
+      type: "FIXED_AMOUNT",
+      value: 20,
+      minOrderAmount: 200,
+      maxUses: 300,
+      usedCount: 0,
+      validFrom: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 15,
+      ),
+      validUntil: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 90,
+      ),
+      isActive: true,
     },
     {
-      userId: users[1].id,
-      customerId: customers[2].id,
-      discountId: null,
-      status: "COMPLETED",
-      subtotal: 8.0,
-      discountAmount: 0.0,
-      taxAmount: 0.4,
-      totalAmount: 8.4,
-      notes: "Third sale",
-      saleItems: [
-        {
-          productId: products[4].id,
-          productName: products[4].productName,
-          barcode: products[4].barcode,
-          quantity: 2,
-          unitPrice: 2.5,
-          discount: 0.0,
-          taxRate: 0.05,
-          subtotal: 5.0,
-        },
-        {
-          productId: products[5].id,
-          productName: products[5].productName,
-          barcode: products[5].barcode,
-          quantity: 1,
-          unitPrice: 3.5,
-          discount: 0.0,
-          taxRate: 0.1,
-          subtotal: 3.5,
-        },
-      ],
-      payment: {
-        method: "CARD",
-        amountPaid: 10.0,
-        changeDue: 1.6,
-      },
-      receipt: {
-        receiptNumber: "RCP-20260319-0003",
-        storeName: "SwiftPOS Retail",
-        storeAddress: "123 Main Street",
-        storeTaxId: "TAX-123456",
-        cashierName: users[1].name,
-        customerName: customers[2].name,
-        printedAt: new Date(),
-      },
+      code: "WEEKEND5",
+      description: "5% weekend promo",
+      type: "PERCENTAGE",
+      value: 5,
+      minOrderAmount: 40,
+      maxUses: 1000,
+      usedCount: 0,
+      validFrom: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 10,
+      ),
+      validUntil: new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 60,
+      ),
+      isActive: true,
     },
   ];
 
-  for (const saleSeed of salesSeedData) {
-    const saleIndex = salesSeedData.indexOf(saleSeed) + 1;
-    const sale = await prisma.sale.create({
-      data: {
-        userId: saleSeed.userId,
-        customerId: saleSeed.customerId,
-        discountId: saleSeed.discountId,
-        status: saleSeed.status,
-        subtotal: saleSeed.subtotal,
-        discountAmount: saleSeed.discountAmount,
-        taxAmount: saleSeed.taxAmount,
-        totalAmount: saleSeed.totalAmount,
-        notes: saleSeed.notes,
-        saleItems: {
-          create: saleSeed.saleItems,
-        },
-      },
-    });
-    await prisma.payment.create({
-      data: {
-        saleId: sale.id,
-        method: saleSeed.payment.method,
-        amount: saleSeed.totalAmount,
-        amountPaid: saleSeed.payment.amountPaid,
-        changeDue: saleSeed.payment.changeDue,
-        reference: `SEED-PAY-${String(saleIndex).padStart(4, "0")}`,
-      },
-    });
-    const uniqueReceiptNumber = `RCP-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(saleIndex).padStart(4, "0")}`;
-    await prisma.receipt.create({
-      data: {
-        saleId: sale.id,
-        receiptNumber: uniqueReceiptNumber,
-        storeName: saleSeed.receipt.storeName,
-        storeAddress: saleSeed.receipt.storeAddress,
-        storeTaxId: saleSeed.receipt.storeTaxId,
-        cashierName: saleSeed.receipt.cashierName,
-        customerName: saleSeed.receipt.customerName,
-        printedAt: saleSeed.receipt.printedAt,
-      },
+  for (const discount of discountSeeds) {
+    await prisma.discount.upsert({
+      where: { code: discount.code },
+      update: discount,
+      create: discount,
     });
   }
 
-  // Seed hardware devices
+  await prisma.hardwareDevice.deleteMany();
   await prisma.hardwareDevice.createMany({
     data: [
       {
-        name: "Cashier 1 Printer",
+        name: "Counter 1 Receipt Printer",
         type: "RECEIPT_PRINTER",
-        serialNumber: "PRN-001",
-        ipAddress: "192.168.1.10",
+        serialNumber: "PRN-C1-1001",
+        ipAddress: "192.168.10.21",
         port: 9100,
         isOnline: true,
       },
       {
-        name: "Main Barcode Scanner",
+        name: "Counter 2 Barcode Scanner",
         type: "BARCODE_SCANNER",
-        serialNumber: "BSC-001",
-        ipAddress: "192.168.1.11",
+        serialNumber: "BSC-C2-2002",
+        ipAddress: "192.168.10.22",
         port: 9200,
         isOnline: true,
       },
+      {
+        name: "Main Card Reader",
+        type: "CARD_READER",
+        serialNumber: "CRD-MAIN-3003",
+        ipAddress: "192.168.10.23",
+        port: 9300,
+        isOnline: true,
+      },
     ],
-    skipDuplicates: true,
   });
 
-  // Seed Settings
-  await prisma.setting.create({
-    data: {
-      storeName: "SwiftPOS Retail",
-      storeAddress: "123 Main Street",
-      storeTaxId: "TAX-123456",
-      currency: "USD",
-      language: "en",
-      theme: "light",
-      receiptHeaderText: "Thank you for your purchase",
-      receiptFooter: "Thank you for shopping!",
-      receiptPaperWidth: "80mm",
-      autoPrint: false,
-      showLoyaltyPoints: false,
-      showStoreLogo: false,
-      businessHours: "Mon-Sat 8:00-20:00",
-      taxRate: 0.15,
-      pointsPerGHC: 1,
-      ghcPerPoint: 0.1,
-      minimumPointsToRedeem: 100,
-    },
+  const existingSetting = await prisma.setting.findFirst();
+  if (existingSetting) {
+    await prisma.setting.update({
+      where: { id: existingSetting.id },
+      data: {
+        storeName: "SwiftPOS Mini Mart",
+        storeAddress: "15 Ring Road Central, Accra",
+        storeTaxId: "GRA-TIN-4451021",
+        currency: "GHS",
+        language: "en",
+        theme: "light",
+        receiptHeaderText: "SwiftPOS Mini Mart - Sales Receipt",
+        receiptFooter: "Thank you for shopping with us.",
+        receiptPaperWidth: "80mm",
+        autoPrint: false,
+        showLoyaltyPoints: true,
+        showStoreLogo: false,
+        businessHours: "Mon-Sat 07:30-21:00, Sun 09:00-18:00",
+        taxRate: 0.15,
+        pointsPerGHC: 1,
+        ghcPerPoint: 0.1,
+        minimumPointsToRedeem: 100,
+      },
+    });
+  } else {
+    await prisma.setting.create({
+      data: {
+        storeName: "SwiftPOS Mini Mart",
+        storeAddress: "15 Ring Road Central, Accra",
+        storeTaxId: "GRA-TIN-4451021",
+        currency: "GHS",
+        language: "en",
+        theme: "light",
+        receiptHeaderText: "SwiftPOS Mini Mart - Sales Receipt",
+        receiptFooter: "Thank you for shopping with us.",
+        receiptPaperWidth: "80mm",
+        autoPrint: false,
+        showLoyaltyPoints: true,
+        showStoreLogo: false,
+        businessHours: "Mon-Sat 07:30-21:00, Sun 09:00-18:00",
+        taxRate: 0.15,
+        pointsPerGHC: 1,
+        ghcPerPoint: 0.1,
+        minimumPointsToRedeem: 100,
+      },
+    });
+  }
+
+  // Keep transactional seed deterministic and repeatable.
+  await prisma.paymentWebhookEvent.deleteMany();
+  await prisma.refund.deleteMany();
+  await prisma.loyaltyRedemption.deleteMany();
+  await prisma.receipt.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.saleItem.deleteMany();
+  await prisma.sale.deleteMany();
+  await prisma.stockAdjustment.deleteMany();
+
+  const users = await prisma.user.findMany();
+  const adminUser = users.find((user) => user.role === "ADMIN") || users[0];
+  const cashiers = users.filter(
+    (user) => user.role === "CASHIER" || user.role === "MANAGER",
+  );
+  const customers = await prisma.customer.findMany();
+  const discounts = await prisma.discount.findMany({
+    where: { isActive: true },
   });
+  const inventories = await prisma.inventory.findMany();
+
+  const inventoryByProductId = new Map(
+    inventories.map((inventory) => [inventory.productId, inventory]),
+  );
+  const quantityByProductId = new Map(
+    inventories.map((inventory) => [inventory.productId, inventory.quantity]),
+  );
+
+  for (const inventory of inventories) {
+    await prisma.stockAdjustment.create({
+      data: {
+        inventoryId: inventory.id,
+        productId: inventory.productId,
+        userId: adminUser.id,
+        reason: "OPENING_STOCK",
+        quantityBefore: 0,
+        quantityChange: inventory.quantity,
+        quantityAfter: inventory.quantity,
+        notes: "Opening stock seeded for demo environment",
+        createdAt: daysAgoAtHour(35, 7, 30),
+      },
+    });
+  }
+
+  let paymentCounter = 1;
+  let receiptCounter = 1;
+
+  for (let day = 35; day >= 0; day -= 1) {
+    const salesCount = randomInt(2, 5);
+    for (let saleIndex = 0; saleIndex < salesCount; saleIndex += 1) {
+      const cashier = pick(cashiers);
+      const customer = seededRandom() < 0.72 ? pick(customers) : null;
+
+      const statusRoll = seededRandom();
+      const status =
+        statusRoll < 0.8
+          ? "COMPLETED"
+          : statusRoll < 0.9
+            ? "VOIDED"
+            : "CANCELLED";
+
+      const itemsToBuy = pickManyUnique(productsWithCategory, randomInt(1, 4));
+      let subtotal = 0;
+      let taxAmount = 0;
+
+      const saleItems = itemsToBuy.map((product) => {
+        const quantity = randomInt(1, 4);
+        const unitPrice = Number(product.price);
+        const lineDiscountRate =
+          seededRandom() < 0.2 ? randomInt(3, 10) / 100 : 0;
+        const gross = unitPrice * quantity;
+        const lineDiscount = money(gross * lineDiscountRate);
+        const lineSubtotal = money(gross - lineDiscount);
+        const lineTax = money(lineSubtotal * (Number(product.taxRate) / 100));
+
+        subtotal += lineSubtotal;
+        taxAmount += lineTax;
+
+        return {
+          productId: product.id,
+          productName: product.productName,
+          barcode: product.barcode,
+          quantity,
+          unitPrice: money(unitPrice),
+          discount: lineDiscount,
+          taxRate: Number(product.taxRate),
+          subtotal: lineSubtotal,
+        };
+      });
+
+      subtotal = money(subtotal);
+      taxAmount = money(taxAmount);
+
+      let discount = null;
+      if (seededRandom() < 0.35) {
+        discount = pick(discounts);
+      }
+
+      let discountAmount = 0;
+      if (
+        discount &&
+        (!discount.minOrderAmount ||
+          subtotal >= Number(discount.minOrderAmount))
+      ) {
+        if (discount.type === "PERCENTAGE") {
+          discountAmount = money(subtotal * (Number(discount.value) / 100));
+        } else {
+          discountAmount = Math.min(money(Number(discount.value)), subtotal);
+        }
+      }
+
+      const totalAmount = money(
+        Math.max(0, subtotal - discountAmount + taxAmount),
+      );
+      const createdAt = daysAgoAtHour(day, randomInt(8, 20), randomInt(0, 59));
+
+      const sale = await prisma.sale.create({
+        data: {
+          userId: cashier.id,
+          customerId: customer?.id,
+          discountId: discountAmount > 0 ? discount.id : null,
+          status,
+          subtotal,
+          discountAmount,
+          taxAmount,
+          totalAmount,
+          notes:
+            status === "VOIDED"
+              ? "Voided during checkout due to quantity correction"
+              : status === "CANCELLED"
+                ? "Cancelled after mobile money timeout"
+                : "Completed sale",
+          createdAt,
+          updatedAt: createdAt,
+          saleItems: {
+            create: saleItems,
+          },
+        },
+      });
+
+      if (status === "COMPLETED") {
+        const methodRoll = seededRandom();
+        const method =
+          methodRoll < 0.5
+            ? "CASH"
+            : methodRoll < 0.8
+              ? "MOBILE_MONEY"
+              : "CARD";
+
+        let paymentStatus = "SUCCESS";
+        if (method === "MOBILE_MONEY" && seededRandom() < 0.08) {
+          paymentStatus = "PENDING";
+        }
+
+        const amountPaid =
+          method === "CASH"
+            ? money(totalAmount + randomInt(0, 20))
+            : money(totalAmount);
+        const changeDue =
+          method === "CASH" ? money(amountPaid - totalAmount) : 0;
+        const paymentReference = `SEED-PAY-${String(paymentCounter).padStart(6, "0")}`;
+
+        const payment = await prisma.payment.create({
+          data: {
+            saleId: sale.id,
+            method,
+            status: paymentStatus,
+            amount: totalAmount,
+            amountPaid,
+            changeDue,
+            reference: paymentReference,
+            provider:
+              method === "MOBILE_MONEY"
+                ? "MTN MoMo"
+                : method === "CARD"
+                  ? "Visa"
+                  : null,
+            phoneNumber:
+              method === "MOBILE_MONEY" ? customer?.phone || null : null,
+            providerStatus: paymentStatus,
+            expiresAt:
+              paymentStatus === "PENDING"
+                ? new Date(createdAt.getTime() + 10 * 60 * 1000)
+                : null,
+            processedAt:
+              paymentStatus === "SUCCESS"
+                ? new Date(createdAt.getTime() + randomInt(30, 240) * 1000)
+                : null,
+            last4: method === "CARD" ? String(randomInt(1000, 9999)) : null,
+            failureReason:
+              paymentStatus === "PENDING"
+                ? "Awaiting customer confirmation"
+                : null,
+            createdAt,
+            updatedAt: createdAt,
+          },
+        });
+
+        if (payment.status === "SUCCESS") {
+          const receiptNumber = `RCP-${String(receiptCounter).padStart(7, "0")}`;
+          await prisma.receipt.create({
+            data: {
+              saleId: sale.id,
+              receiptNumber,
+              storeName: "SwiftPOS Mini Mart",
+              storeAddress: "15 Ring Road Central, Accra",
+              storeTaxId: "GRA-TIN-4451021",
+              cashierName: cashier.name,
+              customerName: customer?.name || "Walk-in Customer",
+              items: saleItems.map((item) => ({
+                productName: item.productName,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                subtotal: item.subtotal,
+              })),
+              printedAt: new Date(
+                createdAt.getTime() + randomInt(60, 300) * 1000,
+              ),
+              createdAt,
+            },
+          });
+
+          for (const item of saleItems) {
+            const inventory = inventoryByProductId.get(item.productId);
+            const currentQuantity =
+              quantityByProductId.get(item.productId) || 0;
+            const quantityAfter = Math.max(0, currentQuantity - item.quantity);
+
+            await prisma.stockAdjustment.create({
+              data: {
+                inventoryId: inventory.id,
+                productId: item.productId,
+                userId: cashier.id,
+                reason: "SALE",
+                quantityBefore: currentQuantity,
+                quantityChange: -item.quantity,
+                quantityAfter,
+                referenceId: sale.id,
+                notes: `Sold via ${method}`,
+                createdAt,
+              },
+            });
+
+            await prisma.inventory.update({
+              where: { id: inventory.id },
+              data: { quantity: quantityAfter },
+            });
+
+            quantityByProductId.set(item.productId, quantityAfter);
+          }
+
+          if (customer) {
+            await prisma.customer.update({
+              where: { id: customer.id },
+              data: {
+                loyaltyPoints: {
+                  increment: Math.max(1, Math.floor(totalAmount)),
+                },
+              },
+            });
+          }
+
+          receiptCounter += 1;
+        }
+
+        paymentCounter += 1;
+      }
+    }
+  }
+
+  console.log("Seeded realistic POS sample data successfully.");
 }
 
 main()
-  .then(() => {
-    console.log("Seeded all tables with realistic sample data!");
-    prisma.$disconnect();
+  .then(async () => {
+    await prisma.$disconnect();
   })
-  .catch((e) => {
-    console.error(e);
-    prisma.$disconnect();
+  .catch(async (error) => {
+    console.error(error);
+    await prisma.$disconnect();
     process.exit(1);
   });

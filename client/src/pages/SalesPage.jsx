@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Topbar } from "../components/layout/Topbar";
 import { Button } from "../components/common/Button";
@@ -17,7 +17,6 @@ import {
 } from "../utils/formatTransactionId";
 import { Download, FileText, Ban } from "lucide-react";
 import toast from "react-hot-toast";
-import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
 export const SalesPage = () => {
@@ -97,7 +96,10 @@ export const SalesPage = () => {
   };
 
   const handlePrint = useReactToPrint({
-    content: () => receiptRef.current,
+    contentRef: receiptRef,
+    onAfterPrint: () => toast.success("Receipt printed successfully"),
+    onPrintError: (error) =>
+      toast.error("Failed to print receipt: " + (error?.message || error)),
   });
 
   const runningTotal =
@@ -113,18 +115,12 @@ export const SalesPage = () => {
   const salesRows = getSalesRows();
   const totalPages = Math.max(1, Math.ceil(salesRows.length / pageSize));
 
-  useEffect(() => {
-    setCurrentPage((prev) => Math.min(prev, totalPages));
-  }, [totalPages]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [dateFrom, dateTo, statusFilter]);
+  const safeCurrentPage = Math.min(currentPage, totalPages);
 
   const paginatedSales = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
+    const start = (safeCurrentPage - 1) * pageSize;
     return salesRows.slice(start, start + pageSize);
-  }, [salesRows, currentPage]);
+  }, [salesRows, safeCurrentPage]);
 
   const csvEscape = (value) => {
     if (value === null || value === undefined) return "";
@@ -303,7 +299,10 @@ export const SalesPage = () => {
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full px-4 py-2.5 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -314,7 +313,10 @@ export const SalesPage = () => {
               <input
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full px-4 py-2.5 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -323,7 +325,10 @@ export const SalesPage = () => {
                 label="Status"
                 options={statusOptions}
                 value={statusFilter}
-                onChange={setStatusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
             <Button
@@ -350,10 +355,13 @@ export const SalesPage = () => {
           pagination={
             salesRows.length > pageSize
               ? {
-                  currentPage,
+                  currentPage: safeCurrentPage,
                   totalItems: salesRows.length,
                   itemsPerPage: pageSize,
-                  onPageChange: setCurrentPage,
+                  onPageChange: (page) => {
+                    const boundedPage = Math.min(Math.max(page, 1), totalPages);
+                    setCurrentPage(boundedPage);
+                  },
                   itemLabel: "sales",
                 }
               : undefined

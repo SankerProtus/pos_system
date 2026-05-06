@@ -43,6 +43,27 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  const updateAuthenticatedUser = (updatedUser) => {
+    if (!updatedUser) return;
+
+    setAuthState((prev) => {
+      if (!prev.isAuthenticated || !prev.user) {
+        return prev;
+      }
+
+      const nextState = {
+        ...prev,
+        user: {
+          ...prev.user,
+          ...updatedUser,
+        },
+      };
+
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(nextState.user));
+      return nextState;
+    });
+  };
+
   // Add refreshUser method
   const refreshUser = async () => {
     try {
@@ -68,7 +89,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        ...authState,
+        login,
+        logout,
+        refreshUser,
+        updateAuthenticatedUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

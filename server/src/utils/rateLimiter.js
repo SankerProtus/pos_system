@@ -89,6 +89,27 @@ export const paymentOtpRateLimiter = rateLimit({
   },
 });
 
+// Payment Cancel Rate Limiter
+export const paymentCancelRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res, _next, options) => {
+    const now = Date.now();
+    const resetTime = options.resetTime
+      ? options.resetTime.getTime()
+      : now + options.windowMs;
+    const retryAfter = getRetryAfterSeconds(options.windowMs, now, resetTime);
+
+    res.setHeader("Retry-After", retryAfter);
+    res.status(429).json({
+      message: "Too many payment cancellation attempts",
+      retryAfter,
+    });
+  },
+});
+
 // Payment Verify Polling Rate Limiter
 export const paymentVerifyRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,

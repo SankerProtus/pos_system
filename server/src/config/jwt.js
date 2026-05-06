@@ -4,7 +4,7 @@ import crypto from "crypto";
 /**
  * Generate access and refresh tokens for a user
  */
-export const generateToken = (user, options = {}) => {
+export const generateToken = (user) => {
   // Generate a unique JWT ID for session tracking
   const jti = crypto.randomUUID();
 

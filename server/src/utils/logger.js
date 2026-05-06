@@ -2,8 +2,15 @@ import { createLogger, format, transports } from "winston";
 
 const { combine, timestamp, label, printf } = format;
 
-const myFormat = printf(({ level, message, label, timestamp }) => {
-  return `${timestamp} [${label}] ${level}: ${message}`;
+const myFormat = printf(({ level, message, label, timestamp, ...meta }) => {
+  const metaEntries = Object.entries(meta || {}).filter(
+    ([key]) => !["splat"].includes(key),
+  );
+  const metaText =
+    metaEntries.length > 0
+      ? ` ${JSON.stringify(Object.fromEntries(metaEntries))}`
+      : "";
+  return `${timestamp} [${label}] ${level}: ${message}${metaText}`;
 });
 
 export const logger = createLogger({
@@ -22,6 +29,6 @@ if (process.env.NODE_ENV !== "production") {
   logger.add(
     new transports.Console({
       format: format.simple(),
-    })
+    }),
   );
 }

@@ -11,6 +11,7 @@ export const MobileMoneyPaymentModal = ({
   otp,
   onOtpChange,
   onConfirm,
+  onCancelPending,
   isSubmitting,
   isAwaitingApproval,
   statusMessage,
@@ -40,7 +41,7 @@ export const MobileMoneyPaymentModal = ({
             type="tel"
             value={phoneNumber}
             onChange={(event) => onPhoneNumberChange(event.target.value)}
-            placeholder="e.g. +233241234567"
+            placeholder="e.g. 0540000000 or +233540000000"
             disabled={isSubmitting || isAwaitingApproval}
             className="w-full px-4 py-3 bg-[#0a1628] border border-[#263548] text-slate-100 rounded-lg font-mono text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
           />
@@ -70,10 +71,10 @@ export const MobileMoneyPaymentModal = ({
           <Button
             variant="ghost"
             fullWidth
-            onClick={onClose}
-            disabled={isSubmitting || isAwaitingApproval}
+            onClick={isAwaitingApproval ? onCancelPending || onClose : onClose}
+            disabled={isSubmitting}
           >
-            Cancel
+            {isAwaitingApproval ? "Cancel Request" : "Cancel"}
           </Button>
           <Button
             variant="success"

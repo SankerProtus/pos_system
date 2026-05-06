@@ -4,6 +4,8 @@ import { prisma } from "../lib/Prisma.js";
 import { logger } from "../utils/logger.js";
 import { createTtlCache } from "../lib/ttlCache.js";
 import { auditService } from "../services/audit.service.js";
+import { metrics } from "../utils/metrics.js";
+import { paymentsReconciliationService } from "../services/paymentsReconciliation.service.js";
 
 const defaultEmail =
   process.env.PAYSTACK_DEFAULT_CUSTOMER_EMAIL || "pos@example.com";
@@ -11,6 +13,18 @@ const verifyCache = createTtlCache({
   defaultTtlMs: 3 * 1000,
   maxEntries: 1000,
 });
+
+const logPaymentEvent = (req, event, extra = {}) => {
+  logger.info(
+    JSON.stringify({
+      event,
+      correlationId: req.correlationId || null,
+      userId: req.user?.id || null,
+      endpoint: `${req.method} ${req.originalUrl}`,
+      ...extra,
+    }),
+  );
+};
 
 const isTerminalPaymentStatus = (value) => {
   const status = String(value || "").toUpperCase();
@@ -21,6 +35,7 @@ const isTerminalPaymentStatus = (value) => {
 
 export const paymentsController = {
   initialize: async (req, res) => {
+    const startedAt = Date.now();
     try {
       const {
         amount,
@@ -90,6 +105,22 @@ export const paymentsController = {
           userAgent: req.get("user-agent") || null,
         });
 
+        metrics.increment("payments.initialize.success", 1, {
+          method: normalizedMethod,
+        });
+        metrics.timing(
+          "payments.initialize.latency_ms",
+          Date.now() - startedAt,
+          {
+            method: normalizedMethod,
+          },
+        );
+        logPaymentEvent(req, "payment.initialize.success", {
+          reference: result?.reference || null,
+          paymentMethod: normalizedMethod,
+          status: result?.status || "PENDING",
+        });
+
         return res.status(200).json({ data: result });
       }
 
@@ -143,6 +174,18 @@ export const paymentsController = {
         userAgent: req.get("user-agent") || null,
       });
 
+      metrics.increment("payments.initialize.success", 1, {
+        method: normalizedMethod,
+      });
+      metrics.timing("payments.initialize.latency_ms", Date.now() - startedAt, {
+        method: normalizedMethod,
+      });
+      logPaymentEvent(req, "payment.initialize.success", {
+        reference: referenceToLog,
+        paymentMethod: normalizedMethod,
+        status: "PENDING",
+      });
+
       return res.status(200).json({
         data: {
           reference: referenceToLog,
@@ -152,12 +195,20 @@ export const paymentsController = {
       });
     } catch (error) {
       const message = error?.message || "Failed to initialize payment";
+      metrics.increment("payments.initialize.failed", 1);
+      metrics.timing("payments.initialize.latency_ms", Date.now() - startedAt, {
+        outcome: "failed",
+      });
+      logPaymentEvent(req, "payment.initialize.failed", {
+        error: message,
+      });
       logger.error(`Payment initialize failed: ${message}`);
       return res.status(error?.statusCode || 500).json({ error: message });
     }
   },
 
   verify: async (req, res) => {
+    const startedAt = Date.now();
     try {
       const reference = req.params.reference;
       if (!reference) {
@@ -167,6 +218,10 @@ export const paymentsController = {
       const normalizedReference = String(reference).trim();
       const cached = verifyCache.get(normalizedReference);
       if (cached) {
+        metrics.increment("payments.verify.cache_hit", 1);
+        metrics.timing("payments.verify.latency_ms", Date.now() - startedAt, {
+          cache: "hit",
+        });
         return res.status(200).json({ data: cached, cached: true });
       }
 
@@ -210,15 +265,30 @@ export const paymentsController = {
         : 3 * 1000;
       verifyCache.set(normalizedReference, responsePayload, cacheTtl);
 
+      metrics.increment("payments.verify.success", 1);
+      metrics.timing("payments.verify.latency_ms", Date.now() - startedAt, {
+        cache: "miss",
+      });
+      logPaymentEvent(req, "payment.verify.success", {
+        reference: normalizedReference,
+        status: responsePayload?.status || null,
+        saleStatus: responsePayload?.saleStatus || null,
+      });
+
       return res.status(200).json({ data: responsePayload });
     } catch (error) {
       const message = error?.message || "Failed to verify payment";
+      metrics.increment("payments.verify.failed", 1);
+      metrics.timing("payments.verify.latency_ms", Date.now() - startedAt, {
+        outcome: "failed",
+      });
       logger.error(`Payment verify failed: ${message}`);
       return res.status(400).json({ error: message });
     }
   },
 
   submitOtp: async (req, res) => {
+    const startedAt = Date.now();
     try {
       const { reference, otp } = req.body;
 
@@ -244,6 +314,13 @@ export const paymentsController = {
         userAgent: req.get("user-agent") || null,
       });
 
+      metrics.increment("payments.otp.success", 1);
+      metrics.timing("payments.otp.latency_ms", Date.now() - startedAt);
+      logPaymentEvent(req, "payment.otp.success", {
+        reference: String(reference).trim(),
+        status: data?.status || "unknown",
+      });
+
       return res.status(200).json({
         data: {
           reference,
@@ -254,12 +331,105 @@ export const paymentsController = {
       });
     } catch (error) {
       const message = error?.message || "Failed to submit OTP";
+      metrics.increment("payments.otp.failed", 1);
+      metrics.timing("payments.otp.latency_ms", Date.now() - startedAt, {
+        outcome: "failed",
+      });
       logger.error(`Payment OTP submission failed: ${message}`);
       return res.status(400).json({ error: message });
     }
   },
 
+  cancel: async (req, res) => {
+    const startedAt = Date.now();
+    try {
+      const { reference, reason } = req.body;
+
+      const result = await mobileMoneyService.cancelPendingPayment({
+        reference: String(reference).trim(),
+        reason: reason || "Cancelled from POS terminal",
+        requestedByUserId: req.user?.id,
+        requestedByRole: req.user?.role,
+      });
+
+      verifyCache.del(String(reference).trim());
+
+      await auditService.log({
+        userId: req.user?.id || null,
+        action: "PAYMENT_CANCEL",
+        targetType: "Payment",
+        targetId: String(reference).trim(),
+        after: {
+          status: result?.status || "FAILED",
+          saleStatus: result?.saleStatus || "CANCELLED",
+          reason: result?.failureReason || reason || null,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent") || null,
+      });
+
+      metrics.increment("payments.cancel.success", 1);
+      metrics.timing("payments.cancel.latency_ms", Date.now() - startedAt);
+      logPaymentEvent(req, "payment.cancel.success", {
+        reference: String(reference).trim(),
+        status: result?.status || null,
+        saleStatus: result?.saleStatus || null,
+      });
+
+      return res.status(200).json({ data: result });
+    } catch (error) {
+      const message = error?.message || "Failed to cancel payment";
+      metrics.increment("payments.cancel.failed", 1);
+      metrics.timing("payments.cancel.latency_ms", Date.now() - startedAt, {
+        outcome: "failed",
+      });
+      logger.error(`Payment cancel failed: ${message}`);
+      return res.status(error?.statusCode || 400).json({ error: message });
+    }
+  },
+
+  reconciliation: async (req, res) => {
+    const startedAt = Date.now();
+    try {
+      const report = await paymentsReconciliationService.buildReport({
+        from: req.query.from,
+        to: req.query.to,
+        page: req.query.page,
+        pageSize: req.query.pageSize,
+        status: req.query.status,
+        providerStatus: req.query.providerStatus,
+      });
+
+      metrics.increment("payments.reconciliation.success", 1);
+      metrics.timing(
+        "payments.reconciliation.latency_ms",
+        Date.now() - startedAt,
+      );
+
+      logPaymentEvent(req, "payment.reconciliation.generated", {
+        filters: report.filters,
+        exceptionsCount: report.pagination.total,
+      });
+
+      return res.status(200).json({ data: report });
+    } catch (error) {
+      const message =
+        error?.message || "Failed to generate reconciliation report";
+      metrics.increment("payments.reconciliation.failed", 1);
+      metrics.timing(
+        "payments.reconciliation.latency_ms",
+        Date.now() - startedAt,
+        {
+          outcome: "failed",
+        },
+      );
+      logger.error(`Payment reconciliation failed: ${message}`);
+      return res.status(500).json({ error: message });
+    }
+  },
+
   webhook: async (req, res) => {
+    const startedAt = Date.now();
     try {
       const rawBody =
         typeof req.rawBody === "string"
@@ -270,6 +440,7 @@ export const paymentsController = {
       const result = await mobileMoneyService.handleWebhook({
         rawBody,
         signature: Array.isArray(signature) ? signature[0] : signature,
+        correlationId: req.correlationId,
       });
 
       const webhookReference =
@@ -292,9 +463,23 @@ export const paymentsController = {
         userAgent: req.get("user-agent") || null,
       });
 
+      metrics.increment("payments.webhook.success", 1, {
+        duplicate: String(Boolean(result?.duplicate)),
+      });
+      metrics.timing("payments.webhook.latency_ms", Date.now() - startedAt);
+      logPaymentEvent(req, "payment.webhook.processed", {
+        reference: webhookReference || null,
+        duplicate: Boolean(result?.duplicate),
+        status: result?.status || null,
+      });
+
       return res.status(200).json(result);
     } catch (error) {
       const message = error?.message || "Webhook processing failed";
+      metrics.increment("payments.webhook.failed", 1);
+      metrics.timing("payments.webhook.latency_ms", Date.now() - startedAt, {
+        outcome: "failed",
+      });
       logger.error(`Payment webhook failed: ${message}`);
       return res.status(error?.statusCode || 400).json({ error: message });
     }

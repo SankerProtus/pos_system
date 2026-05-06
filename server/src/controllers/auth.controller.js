@@ -28,7 +28,7 @@ export const authController = {
 
       res.status(201).json({
         message:
-          "User created successfully. Please check your email to verify your account.",
+          "Registration successful. Please check your email to verify your account.",
         user: result.user,
         accessToken: result.tokens.accessToken,
         refreshToken: result.tokens.refreshToken,

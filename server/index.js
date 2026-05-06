@@ -4,6 +4,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 import { authRoutes } from "./src/routes/auth.routes.js";
 import { salesRoutes } from "./src/routes/sales.routes.js";
 import { usersRouter } from "./src/routes/users.routes.js";
@@ -18,13 +20,22 @@ import { paymentsRoutes } from "./src/routes/payments.routes.js";
 import passport from "./src/config/PassportConfig.js";
 import { setupTrustProxy } from "./src/utils/rateLimiter.js";
 import { prisma } from "./src/lib/Prisma.js";
+import { correlationMiddleware } from "./src/middlewares/correlation.middleware.js";
+import { paymentsReconciliationWorker } from "./src/workers/paymentsReconciliation.worker.js";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 setupTrustProxy(app);
 app.use(passport.initialize());
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 
 // Middleware
 const normalizeOrigin = (value) => value?.trim().replace(/\/$/, "");
@@ -56,6 +67,7 @@ const corsOptions = {
 // Middlewares
 app.use(cors(corsOptions));
 app.use(cookieParser());
+app.use(correlationMiddleware);
 app.use(
   express.json({
     verify: (req, res, buf) => {
@@ -65,6 +77,7 @@ app.use(
 );
 app.use(morgan("dev"));
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/health-check", (req, res) => {
   res.status(200).json({ message: "Server is healthy!" });
@@ -107,6 +120,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/payments", paymentsRoutes);
 
 app.listen(process.env.PORT || 5000, () => {
+  paymentsReconciliationWorker.start();
   console.log(
     `Server is running on port http://localhost:${process.env.PORT || 5000}`,
   );

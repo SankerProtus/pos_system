@@ -1,5 +1,24 @@
 import { prisma } from "../lib/Prisma.js";
 
+const resolvePaymentMethod = (sale) => {
+  const rawMethod =
+    sale?.payment?.method ||
+    sale?.paymentMethod ||
+    sale?.payment?.provider ||
+    "Unknown";
+
+  const normalized = String(rawMethod || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "CARD" || normalized === "CARD_PAYMENT") return "CARD";
+  if (normalized === "MOBILE_MONEY" || normalized === "MOMO")
+    return "MOBILE_MONEY";
+  if (normalized === "CASH") return "CASH";
+
+  return normalized || "Unknown";
+};
+
 export const reportRepository = {
   getDailyReport: async (date) => {
     try {
@@ -83,12 +102,29 @@ export const reportRepository = {
       const paymentMethodBreakdown = [];
       const paymentMap = {};
       for (const sale of sales) {
-        const method = sale.payment?.method || "Unknown";
-        if (!paymentMap[method]) paymentMap[method] = 0;
-        paymentMap[method] += Number(sale.totalAmount || 0);
+        const method = resolvePaymentMethod(sale);
+        if (!paymentMap[method]) {
+          paymentMap[method] = { amount: 0, count: 0 };
+        }
+        paymentMap[method].amount += Number(sale.totalAmount || 0);
+        paymentMap[method].count += 1;
       }
-      for (const method in paymentMap) {
-        paymentMethodBreakdown.push({ method, amount: paymentMap[method] });
+      for (const method of ["CASH", "CARD", "MOBILE_MONEY"]) {
+        paymentMethodBreakdown.push({
+          method,
+          amount: paymentMap[method]?.amount || 0,
+          count: paymentMap[method]?.count || 0,
+        });
+      }
+
+      for (const method of Object.keys(paymentMap)) {
+        if (!["CASH", "CARD", "MOBILE_MONEY"].includes(method)) {
+          paymentMethodBreakdown.push({
+            method,
+            amount: paymentMap[method]?.amount || 0,
+            count: paymentMap[method]?.count || 0,
+          });
+        }
       }
       // Low stock count
       const lowStockCount = await prisma.inventory.count({

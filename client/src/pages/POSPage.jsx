@@ -912,8 +912,18 @@ export const POSPage = () => {
         {
           amount: paid,
           paymentMethod,
+          items: items.map((item) => ({
+            productId: item.productId,
+            productName: item.name,
+            barcode: item.barcode,
+            price: item.price,
+            taxRate: item.taxRate,
+            quantity: item.quantity,
+            discount: item.discount || 0,
+          })),
           customerId: selectedCustomerId || null,
           customerEmail: selectedCustomer?.email || null,
+          discountAmount: discount,
           metadata: {
             source: "POS",
           },
@@ -946,10 +956,10 @@ export const POSPage = () => {
           const verifyResponse = await apiClient.get(
             `/payments/verify/${reference}`,
           );
-          const status = verifyResponse?.data?.data?.status;
-          if (status === "success") {
+          const paymentData = verifyResponse?.data?.data || {};
+          if (paymentData.saleStatus === "COMPLETED" && paymentData.sale) {
             toast.success("Payment verified successfully");
-            await submitSale(reference);
+            handleSaleCompleted(paymentData.sale);
             return;
           }
         } catch {

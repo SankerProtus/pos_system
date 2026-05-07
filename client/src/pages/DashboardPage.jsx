@@ -151,13 +151,15 @@ export const DashboardPage = () => {
   const paymentSegments = Array.isArray(dailyData?.paymentMethodBreakdown)
     ? dailyData.paymentMethodBreakdown.map((method) => ({
         name: method?.method || "Unknown",
-        value: method?.amount || 0,
+        value: method?.count ?? method?.amount ?? 0,
         color:
           method?.method === "CASH"
             ? "#10b981"
-            : method?.method === "MOBILE_MONEY"
-              ? "#f59e0b"
-              : "#6366f1",
+            : method?.method === "CARD"
+              ? "#3b82f6"
+              : method?.method === "MOBILE_MONEY"
+                ? "#f59e0b"
+                : "#6366f1",
       }))
     : [];
 

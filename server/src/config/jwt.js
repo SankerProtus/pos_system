@@ -5,6 +5,10 @@ import crypto from "crypto";
  * Generate access and refresh tokens for a user
  */
 export const generateToken = (user) => {
+  if (!process.env.ACCESS_TOKEN_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
+    throw new Error("JWT secrets are not configured on the server");
+  }
+
   // Generate a unique JWT ID for session tracking
   const jti = crypto.randomUUID();
 

@@ -8,7 +8,8 @@ try {
 }
 
 export const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || process.env.EMAIL_SERVICE || "smtp.gmail.com",
+  service: process.env.EMAIL_SERVICE || undefined,
+  host: process.env.EMAIL_HOST || undefined,
   port: process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : 587,
   secure: process.env.EMAIL_SECURE === "true" ? true : false,
   auth: {

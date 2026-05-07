@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "start:render": "prisma migrate deploy && prisma db seed && node index.js",
+    "postinstall": "prisma generate",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js"
   },
   "prisma": {

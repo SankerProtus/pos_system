@@ -8,7 +8,7 @@ try {
 }
 
 export const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtp.gmail.com",
+  host: process.env.EMAIL_HOST || process.env.EMAIL_SERVICE || "smtp.gmail.com",
   port: process.env.EMAIL_PORT ? Number(process.env.EMAIL_PORT) : 587,
   secure: process.env.EMAIL_SECURE === "true" ? true : false,
   auth: {
@@ -18,10 +18,15 @@ export const transporter = nodemailer.createTransport({
   requireTLS: true,
 });
 
-transporter.verify((error, _success) => {
-  if (error) {
-    console.log("❌ Error setting up email transporter:", error);
-  } else {
-    console.log("✅ Email transporter is ready to send messages");
-  }
-});
+if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+  transporter.verify((error, _success) => {
+    if (error) {
+      console.warn(
+        "Email transporter verification failed:",
+        error.message || error,
+      );
+    } else {
+      console.log("Email transporter is ready to send messages");
+    }
+  });
+}

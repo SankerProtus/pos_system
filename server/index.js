@@ -79,6 +79,13 @@ app.use(morgan("dev"));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "POS API is running",
+    healthCheck: "/health-check",
+  });
+});
+
 app.get("/health-check", (req, res) => {
   res.status(200).json({ message: "Server is healthy!" });
 });

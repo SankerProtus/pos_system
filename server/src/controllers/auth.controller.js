@@ -71,7 +71,11 @@ export const authController = {
         refreshToken: result.tokens.refreshToken,
       });
     } catch (error) {
-      logger.error("Login error:", error.message);
+      logger.error("Login error:", {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+      });
 
       if (
         error.message === "Invalid credentials" ||
@@ -317,11 +321,15 @@ export const authController = {
 
         if (err) {
           logger.error("Google authentication error:", err.message || err);
-          return res.redirect(`${frontendUrl}/auth/callback?error=authentication_failed`);
+          return res.redirect(
+            `${frontendUrl}/auth/callback?error=authentication_failed`,
+          );
         }
 
         if (!user) {
-          return res.redirect(`${frontendUrl}/auth/callback?error=user_not_found`);
+          return res.redirect(
+            `${frontendUrl}/auth/callback?error=user_not_found`,
+          );
         }
 
         // Generate tokens for the authenticated user

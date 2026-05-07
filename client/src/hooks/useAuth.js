@@ -66,7 +66,10 @@ export const useAuth = () => {
     } catch (err) {
       console.error("Login error details:", err);
       const errorMessage =
-        err.error || err.message || TOAST_MESSAGES.ERROR.LOGIN_FAILED;
+        err.response?.data?.error ||
+        err.error ||
+        err.message ||
+        TOAST_MESSAGES.ERROR.LOGIN_FAILED;
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {

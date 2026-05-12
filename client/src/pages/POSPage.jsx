@@ -17,6 +17,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { Search, Minus, Plus, X, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Receipt } from "../components/shared/Receipt";
+import { PaymentCheckoutModal } from "../components/shared/PaymentCheckoutModal";
 import { MobileMoneyPaymentModal } from "../components/shared/MobileMoneyPaymentModal";
 import { useReactToPrint } from "react-to-print";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
@@ -65,6 +66,10 @@ export const POSPage = () => {
   const [selectedProductIndex, setSelectedProductIndex] = useState(0);
   const [selectedCartIndex, setSelectedCartIndex] = useState(0);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isPaymentCheckoutModalOpen, setIsPaymentCheckoutModalOpen] =
+    useState(false);
+  const [paymentCheckoutProcessing, setPaymentCheckoutProcessing] =
+    useState(false);
   const [isMobileMoneyModalOpen, setIsMobileMoneyModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
@@ -458,10 +463,112 @@ export const POSPage = () => {
     setChargeDisabled(true);
     paymentInitializeIdempotencyKeyRef.current =
       createPaymentInitializeIdempotencyKey();
-    setIsPaymentModalOpen(true);
+    setIsPaymentCheckoutModalOpen(true);
     setAmountPaid(grandTotal(discount).toFixed(2));
     setTimeout(() => setChargeDisabled(false), 1500);
   };
+
+  // Handle Payment Checkout Modal selection
+  const handlePaymentSelect = async ({ method, formData }) => {
+    try {
+      setPaymentCheckoutProcessing(true);
+
+      if (method === "MOBILE_MONEY") {
+        // Set phone number and move to status modal
+        setMobileMoneyPhoneNumber(formData.phoneNumber);
+        setPaymentMethod("MOBILE_MONEY");
+        setIsPaymentCheckoutModalOpen(false);
+        setIsMobileMoneyModalOpen(true);
+        setMobileMoneyStatusMessage("Initializing payment. Please wait...");
+
+        // Start the payment process
+        await handleMobileMoneyStart();
+      } else if (method === "CARD" || method === "BANK_TRANSFER") {
+        // Initialize card or bank transfer payment
+        const selectedCustomer = (customers?.data || []).find(
+          (customer) => customer.id === selectedCustomerId,
+        );
+
+        const initResponse = await apiClient.post(
+          "/payments/initialize",
+          {
+            amount: grandTotal(discount),
+            paymentMethod: method,
+            items: items.map((item) => ({
+              productId: item.productId,
+              productName: item.name,
+              barcode: item.barcode,
+              price: item.price,
+              taxRate: item.taxRate,
+              quantity: item.quantity,
+            })),
+            customerId: selectedCustomerId || null,
+            customerEmail: selectedCustomer?.email || null,
+            discountAmount: discount,
+            metadata: {
+              source: "POS",
+              paymentMethod: method,
+            },
+          },
+          getPaymentInitializeHeaders(paymentInitializeIdempotencyKeyRef),
+        );
+
+        const authorizationUrl = initResponse?.data?.data?.authorizationUrl;
+        const reference = initResponse?.data?.data?.reference;
+
+        if (!authorizationUrl || !reference) {
+          throw new Error("Unable to initialize payment");
+        }
+
+        setPaymentMethod(method);
+        setIsPaymentCheckoutModalOpen(false);
+
+        // Open Paystack checkout in popup
+        const popup = window.open(
+          authorizationUrl,
+          "_blank",
+          "noopener,noreferrer",
+        );
+        if (!popup) {
+          throw new Error("Popup blocked. Please allow popups and try again.");
+        }
+
+        // Poll for payment status
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          await wait(3000);
+
+          try {
+            const verifyResponse = await apiClient.get(
+              `/payments/verify/${reference}`,
+            );
+            const paymentData = verifyResponse?.data?.data || {};
+            if (paymentData.saleStatus === "COMPLETED" && paymentData.sale) {
+              toast.success("Payment verified successfully");
+              handleSaleCompleted(paymentData.sale);
+              return;
+            }
+          } catch {
+            // Keep polling
+          }
+        }
+
+        throw new Error(
+          "Payment verification timed out. Please check your payment status.",
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to process payment",
+      );
+      setIsPaymentCheckoutModalOpen(true);
+    } finally {
+      setPaymentCheckoutProcessing(false);
+    }
+  };
+
   // Offline handling stub
   useEffect(() => {
     if (!navigator.onLine) {
@@ -480,6 +587,8 @@ export const POSPage = () => {
     setIsReceiptModalOpen(false);
     setCompletedSale(null);
     setIsPaymentModalOpen(false);
+    setIsPaymentCheckoutModalOpen(false);
+    setPaymentCheckoutProcessing(false);
     setIsMobileMoneyModalOpen(false);
     setDiscount(0);
     setAmountPaid("");
@@ -505,6 +614,8 @@ export const POSPage = () => {
     paymentInitializeIdempotencyKeyRef.current = "";
     setCompletedSale(sale || null);
     setIsPaymentModalOpen(false);
+    setIsPaymentCheckoutModalOpen(false);
+    setPaymentCheckoutProcessing(false);
     setIsMobileMoneyModalOpen(false);
     setIsReceiptModalOpen(true);
     clearCart();
@@ -1651,6 +1762,26 @@ export const POSPage = () => {
           </div>
         </div>
       </Modal>
+
+      <PaymentCheckoutModal
+        isOpen={isPaymentCheckoutModalOpen}
+        onClose={() => {
+          if (!mobileMoneyAwaitingApproval && !paymentCheckoutProcessing) {
+            setIsPaymentCheckoutModalOpen(false);
+            setMobileMoneyPhoneNumber("");
+            setMobileMoneyOtp("");
+            setMobileMoneyReference("");
+            setMobileMoneyExpiresAt(null);
+            setMobileMoneyRequiresOtp(false);
+            setMobileMoneyAwaitingApproval(false);
+            setMobileMoneySubmitting(false);
+            setMobileMoneyStatusMessage("");
+          }
+        }}
+        amount={grandTotal(discount)}
+        onPaymentSelect={handlePaymentSelect}
+        isProcessing={paymentCheckoutProcessing}
+      />
 
       <MobileMoneyPaymentModal
         isOpen={isMobileMoneyModalOpen}

@@ -1,8 +1,8 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -22,8 +22,6 @@ import { setupTrustProxy } from "./src/utils/rateLimiter.js";
 import { prisma } from "./src/lib/Prisma.js";
 import { correlationMiddleware } from "./src/middlewares/correlation.middleware.js";
 import { paymentsReconciliationWorker } from "./src/workers/paymentsReconciliation.worker.js";
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -473,6 +473,33 @@ export const POSPage = () => {
     try {
       setPaymentCheckoutProcessing(true);
 
+      if (method === "CASH") {
+        // Cash payment - no Paystack integration needed
+        setPaymentMethod("CASH");
+        setIsPaymentCheckoutModalOpen(false);
+        setAmountPaid(grandTotal(discount).toFixed(2));
+
+        // Create sale with CASH payment
+        const saleData = {
+          items: items.map((item) => ({
+            productId: item.productId,
+            productName: item.name,
+            barcode: item.barcode,
+            price: item.price,
+            taxRate: item.taxRate,
+            quantity: item.quantity,
+          })),
+          paymentMethod: "CASH",
+          amountPaid: grandTotal(discount),
+          discountAmount: discount,
+          customerId: selectedCustomerId || null,
+          reference: null,
+        };
+
+        await createSaleMutation.mutateAsync(saleData);
+        return;
+      }
+
       if (method === "MOBILE_MONEY") {
         // Set phone number and move to status modal
         setMobileMoneyPhoneNumber(formData.phoneNumber);

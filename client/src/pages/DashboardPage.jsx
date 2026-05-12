@@ -159,7 +159,9 @@ export const DashboardPage = () => {
               ? "#3b82f6"
               : method?.method === "MOBILE_MONEY"
                 ? "#f59e0b"
-                : "#6366f1",
+                : method?.method === "BANK_TRANSFER"
+                  ? "#8b5cf6"
+                  : "#6366f1",
       }))
     : [];
 

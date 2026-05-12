@@ -139,9 +139,9 @@ async function main() {
   }
 
   const productSeeds = [
-    ["Beverages", "Coca-Cola 500ml", "BEV001", "1111111111111", 4.5, 3.2, 15],
-    ["Beverages", "Bottled Water 1.5L", "BEV002", "1111111111112", 3.0, 1.8, 0],
-    ["Beverages", "Orange Juice 1L", "BEV003", "1111111111113", 12.0, 8.0, 15],
+    ["Beverages", "Coca-Cola 500ml", "BEV001", "1111111111111", 4.5, 3.2, 15, "https://images.unsplash.com/photo-1554866585-d42b644faf4f?w=400&q=80"],
+    ["Beverages", "Bottled Water 1.5L", "BEV002", "1111111111112", 3.0, 1.8, 0, "https://images.unsplash.com/photo-1597318972930-a9c3a22d04f6?w=400&q=80"],
+    ["Beverages", "Orange Juice 1L", "BEV003", "1111111111113", 12.0, 8.0, 15, "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&q=80"],
     [
       "Beverages",
       "Energy Drink 330ml",
@@ -150,12 +150,13 @@ async function main() {
       10.0,
       6.5,
       15,
+      "https://images.unsplash.com/photo-1625772299848-3f50212fb476?w=400&q=80",
     ],
-    ["Snacks", "Salted Peanuts 100g", "SNK001", "1111111111121", 8.5, 5.2, 15],
-    ["Snacks", "Potato Chips 50g", "SNK002", "1111111111122", 7.0, 4.0, 15],
-    ["Snacks", "Chocolate Cookies", "SNK003", "1111111111123", 9.5, 5.8, 15],
-    ["Snacks", "Granola Bar", "SNK004", "1111111111124", 6.0, 3.6, 15],
-    ["Dairy", "Fresh Milk 1L", "DAI001", "1111111111131", 11.0, 7.4, 12.5],
+    ["Snacks", "Salted Peanuts 100g", "SNK001", "1111111111121", 8.5, 5.2, 15, "https://images.unsplash.com/photo-1585329860620-c347c9a43661?w=400&q=80"],
+    ["Snacks", "Potato Chips 50g", "SNK002", "1111111111122", 7.0, 4.0, 15, "https://images.unsplash.com/photo-1631707917347-74a2a3b5ea42?w=400&q=80"],
+    ["Snacks", "Chocolate Cookies", "SNK003", "1111111111123", 9.5, 5.8, 15, "https://images.unsplash.com/photo-1585080736752-6ad5aacb6db7?w=400&q=80"],
+    ["Snacks", "Granola Bar", "SNK004", "1111111111124", 6.0, 3.6, 15, "https://images.unsplash.com/photo-1585518419759-66cc2aae5db4?w=400&q=80"],
+    ["Dairy", "Fresh Milk 1L", "DAI001", "1111111111131", 11.0, 7.4, 12.5, "https://images.unsplash.com/photo-1550583724-b2692b25a968?w=400&q=80"],
     [
       "Dairy",
       "Yogurt Vanilla 450g",
@@ -164,6 +165,7 @@ async function main() {
       14.0,
       9.8,
       12.5,
+      "https://images.unsplash.com/photo-1488477181946-6428a0291840?w=400&q=80",
     ],
     [
       "Dairy",
@@ -173,13 +175,14 @@ async function main() {
       19.0,
       13.0,
       12.5,
+      "https://images.unsplash.com/photo-1589985643862-8f0ec30a1b3b?w=400&q=80",
     ],
-    ["Bakery", "Whole Wheat Bread", "BAK001", "1111111111141", 10.5, 6.0, 10],
-    ["Bakery", "Butter Croissant", "BAK002", "1111111111142", 7.0, 3.9, 10],
-    ["Bakery", "Cupcake Vanilla", "BAK003", "1111111111143", 6.5, 3.3, 10],
-    ["Produce", "Banana 1kg", "PRD001", "1111111111151", 13.0, 8.5, 0],
-    ["Produce", "Tomatoes 1kg", "PRD002", "1111111111152", 15.0, 9.6, 0],
-    ["Produce", "Onions 1kg", "PRD003", "1111111111153", 14.0, 8.8, 0],
+    ["Bakery", "Whole Wheat Bread", "BAK001", "1111111111141", 10.5, 6.0, 10, "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&q=80"],
+    ["Bakery", "Butter Croissant", "BAK002", "1111111111142", 7.0, 3.9, 10, "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&q=80"],
+    ["Bakery", "Cupcake Vanilla", "BAK003", "1111111111143", 6.5, 3.3, 10, "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80"],
+    ["Produce", "Banana 1kg", "PRD001", "1111111111151", 13.0, 8.5, 0, "https://images.unsplash.com/photo-1571115764595-644a12c7cb4d?w=400&q=80"],
+    ["Produce", "Tomatoes 1kg", "PRD002", "1111111111152", 15.0, 9.6, 0, "https://images.unsplash.com/photo-1592924357228-91a4daadcccf?w=400&q=80"],
+    ["Produce", "Onions 1kg", "PRD003", "1111111111153", 14.0, 8.8, 0, "https://images.unsplash.com/photo-1585518419759-66cc2aae5db4?w=400&q=80"],
     [
       "Household",
       "Dishwashing Liquid 500ml",
@@ -188,6 +191,7 @@ async function main() {
       16.0,
       10.2,
       15,
+      "https://images.unsplash.com/photo-1585265072418-90e5e09c5367?w=400&q=80",
     ],
     [
       "Household",
@@ -197,6 +201,7 @@ async function main() {
       18.0,
       12.5,
       15,
+      "https://images.unsplash.com/photo-1584622281867-8a748b0b73d6?w=400&q=80",
     ],
     [
       "Personal Care",
@@ -206,6 +211,7 @@ async function main() {
       9.0,
       5.0,
       15,
+      "https://images.unsplash.com/photo-1610764957537-b85467063ee0?w=400&q=80",
     ],
     [
       "Personal Care",
@@ -215,6 +221,7 @@ async function main() {
       5.5,
       3.1,
       15,
+      "https://images.unsplash.com/photo-1585929947903-80f58a5c7abe?w=400&q=80",
     ],
   ];
 
@@ -226,6 +233,7 @@ async function main() {
     price,
     costPrice,
     taxRate,
+    imageUrl,
   ] of productSeeds) {
     await prisma.product.upsert({
       where: { sku },
@@ -235,6 +243,7 @@ async function main() {
         price,
         costPrice,
         taxRate,
+        imageUrl,
         isActive: true,
         categoryId: categoryIdByName.get(categoryName),
       },
@@ -245,6 +254,7 @@ async function main() {
         price,
         costPrice,
         taxRate,
+        imageUrl,
         isActive: true,
         categoryId: categoryIdByName.get(categoryName),
       },

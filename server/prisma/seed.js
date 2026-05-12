@@ -462,8 +462,32 @@ async function main() {
     },
   ];
 
-  await prisma.supplier.deleteMany();
-  await prisma.supplier.createMany({ data: supplierSeeds });
+  for (const supplier of supplierSeeds) {
+    const existingSupplier = await prisma.supplier.findFirst({
+      where: { name: supplier.name },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (existingSupplier) {
+      await prisma.supplier.update({
+        where: { id: existingSupplier.id },
+        data: {
+          contactName: supplier.contactName,
+          phone: supplier.phone,
+          email: supplier.email,
+          address: supplier.address,
+          isActive: true,
+        },
+      });
+    } else {
+      await prisma.supplier.create({
+        data: {
+          ...supplier,
+          isActive: true,
+        },
+      });
+    }
+  }
 
   const suppliers = await prisma.supplier.findMany();
   const supplierByName = new Map(
